@@ -3,7 +3,7 @@
 [[https://devcenter.heroku.com/articles/heroku-cli][Heroku CLI]] must be installed and user must be logged in to use heroku.el
 
 ** Installation
-You can use ~use-package~ and ~stragiht.el~ to install:
+You can use [[https://github.com/jwiegley/use-package][use-package]] and [[https://github.com/raxod502/straight.el][stragiht.el]] to install:
 
 #+begin_src emacs-lisp
 (use-package heroku
@@ -12,13 +12,13 @@ You can use ~use-package~ and ~stragiht.el~ to install:
 ** Commands
 All commands can be interactively run from ~M-x~ menu.
 
-- heroku-list
+- ~heroku-list~
 List all apps CLI has access to.
-- heroku-logs
+- ~heroku-logs~
 Open a new buffer and stream logs into it.
-- heroku-bash
+- ~heroku-bash~
 Connect to an app and run bash there.
-- heroku-python
+- ~heroku-python~
 Connect to an app and run python shell there.
-- heroku-restart
+- ~heroku-restart~
 Restart an app.
