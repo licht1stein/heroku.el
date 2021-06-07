@@ -1,0 +1,3 @@
+* Run Heroku CLI commands from Emacs
+** Dependencies
+[[https://devcenter.heroku.com/articles/heroku-cli][Heroku CLI]] must be installed and user must be logged in to use heroku.el
