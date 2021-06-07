@@ -9,3 +9,15 @@ You can use ~use-package~ and ~stragiht.el~ to install:
 (use-package heroku
   :straight (heroku :type git :host github :repo "licht1stein/heroku.el"))
 #+end_src
+** Commands
+All commands can be interactively run from ~M-x~ menu.
+*** heroku-list
+List all apps CLI has access to.
+*** heroku-logs
+Open a new buffer and stream logs into it.
+*** heroku-bash
+Connect to an app and run bash there.
+*** heroku-python
+Connect to an app and run python shell there.
+*** heroku-restart
+Restart an app.
