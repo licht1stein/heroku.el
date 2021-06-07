@@ -1,3 +1,11 @@
 * Run Heroku CLI commands from Emacs
 ** Dependencies
 [[https://devcenter.heroku.com/articles/heroku-cli][Heroku CLI]] must be installed and user must be logged in to use heroku.el
+
+** Installation
+You can use ~use-package~ and ~stragiht.el~ to install:
+
+#+begin_example emacs-lisp
+(use-package heroku
+  :straight (heroku :type git :host github :repo "licht1stein/heroku.el"))
+#+end_example
