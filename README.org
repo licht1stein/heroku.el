@@ -5,7 +5,7 @@
 ** Installation
 You can use ~use-package~ and ~stragiht.el~ to install:
 
-#+begin_example emacs-lisp
+#+begin_src emacs-lisp
 (use-package heroku
   :straight (heroku :type git :host github :repo "licht1stein/heroku.el"))
-#+end_example
+#+end_src
