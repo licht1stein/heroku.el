@@ -17,7 +17,7 @@ You can use [[https://github.com/jwiegley/use-package][use-package]] and [[https
 All commands can be interactively run from ~M-x~ menu.
 
 - ~heroku-list~
-List all apps CLI has access to.
+List all apps CLI has access to. Also updates ~heroku-app-list~ variable used for auto-completion of the app names.
 - ~heroku-logs~
 Open a new buffer and stream logs into it. Allows you to keep a logs buffer open and work with it like with plain emacs buffer, including streaming logs into a file.
 - ~heroku-bash~
