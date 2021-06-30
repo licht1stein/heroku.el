@@ -32,3 +32,5 @@ Permanently destroy an app
 Detailed app info
 - ~heroku-rename~
 Rename an app.
+- ~heroku-buildpacks-list~
+List buildpacks for an app.
