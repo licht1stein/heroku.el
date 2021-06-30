@@ -106,6 +106,15 @@ If `heroku-app-list' is nil, also prompt if user wants to have the app-list upda
           (switch-to-buffer-other-window buffer-name))
       (message "Heroku command canceled"))))
 
+(defun heroku-buildpacks-list ()
+  "Display the buildpacks for a Heroku app."
+  (interactive)
+  (let* ((app-name (heroku--read-app-name)) (buffer-name (format "*Heroku Buildpacks List: %s" app-name)))
+    (message (format "Getting buildpacks for %s..." app-name))
+    (make-comint-in-buffer "heroku-buildpacks-list" buffer-name "heroku" nil "buildpacks" "-a" app-name)
+    (switch-to-buffer-other-window buffer-name)
+    ))
+
 (defun heroku-info ()
   "Show detailed Heroku app info."
   (interactive)
