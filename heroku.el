@@ -36,8 +36,8 @@ Argument S string to be parsed into a list of app names."
   (setq heroku-app-list
         (heroku--parse-list (with-current-buffer "*Heroku List*" (buffer-substring-no-properties (point-min) (point-max))))))
 
-(defun heroku--update-app-list ()
-  "List all Heroku apps and update `heroku-app-list' variable."
+(defun heroku--silently-update-app-list ()
+  "Silently fetch all Heroku apps and update `heroku-app-list' variable."
   (message "Getting Heroku apps list...")
   (let ((buffer-name "*Heroku List*"))
     (if (get-buffer buffer-name)
@@ -46,6 +46,14 @@ Argument S string to be parsed into a list of app names."
     (sleep-for 5)
     (heroku--parse-list-buffer-and-setq buffer-name)
     (kill-buffer buffer-name)))
+
+(defun heroku--read-app-name ()
+  "Prompt user to enter or select an app.
+If `heroku-app-list' is nil, also prompt if user wants to have the app-list updated."
+  (unless heroku-app-list
+    (if (y-or-n-p "App list is empty, do you want to update? ")
+        (heroku--silently-update-app-list)))
+  (completing-read "Enter Heroku app name: " heroku-app-list))
 
 (defun heroku-list ()
   "List all Heroku apps and update `heroku-app-list' variable."
@@ -58,14 +66,6 @@ Argument S string to be parsed into a list of app names."
     (switch-to-buffer-other-window buffer-name)
     (sleep-for 5)
     (heroku--parse-list-buffer-and-setq buffer-name)))
-
-(defun heroku--read-app-name ()
-  "Prompt user to enter or select an app.
-If `heroku-app-list' is nil, also prompt if user wants to have the app-list updated."
-  (unless heroku-app-list
-    (if (y-or-n-p "App list is empty, do you want to update? ")
-        (heroku--update-app-list)))
-  (completing-read "Enter Heroku app name: " heroku-app-list))
 
 (defun heroku-bash ()
   "Connect to bash on a Heroku app."
