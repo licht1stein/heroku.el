@@ -57,7 +57,7 @@
 (defun heroku-bash ()
   "Connect to bash on a Heroku app"
   (interactive)
-  (let* ((app-name (completing-read "Enter Heroku app name: " heroku-app-list)) (buffer-name (format "*Heroku Bash: %s" app-name)))
+  (let* ((app-name (heroku--read-app-name)) (buffer-name (format "*Heroku Bash: %s" app-name)))
     (message (format "Connecting to bash on %s..." app-name))
     (make-comint-in-buffer "heroku-bash" buffer-name "heroku" nil "run" "bash" "-a" app-name)
     (switch-to-buffer-other-window buffer-name)
