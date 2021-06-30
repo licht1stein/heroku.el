@@ -1,4 +1,8 @@
 * Run Heroku CLI commands from Emacs
+
+#+CAPTION: heroku-logs
+[[./demo1.mp4]]
+
 ** Dependencies
 [[https://devcenter.heroku.com/articles/heroku-cli][Heroku CLI]] must be installed and user must be logged in to use heroku.el
 
@@ -22,3 +26,5 @@ Connect to an app and run bash there.
 Connect to an app and run python shell there.
 - ~heroku-restart~
 Restart an app.
+- ~heroku-destroy~
+ Permanently destroy an app

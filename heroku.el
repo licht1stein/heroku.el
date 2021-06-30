@@ -73,7 +73,6 @@
           (string-equal app-name (read-string (format  "Type the app name once again to confirm [%s]: " app-name))))
         (progn
           (make-comint-in-buffer "heroku-destroy" buffer-name "heroku" nil "apps:destroy" "-a" app-name (format "--confirm=%s" app-name))
-          (sleep-for 3)
           (switch-to-buffer-other-window buffer-name))
       (message "Heroku command canceled"))))
 
