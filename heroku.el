@@ -76,6 +76,14 @@
           (switch-to-buffer-other-window buffer-name))
       (message "Heroku command canceled"))))
 
+(defun heroku-info ()
+  "Show detailed Heroku app info"
+  (interactive)
+  (let* ((app-name (completing-read "Enter Heroku app name: " heroku-app-list)) (buffer-name (format "*Heroku Info: %s" app-name)))
+    (message (format "Getting info on %s..." app-name))
+    (make-comint-in-buffer "heroku-info" buffer-name "heroku" nil "apps:info" "-a" app-name)
+    (switch-to-buffer-other-window buffer-name)
+    ))
 
 (defun heroku-restart ()
   "Restart a Heroku app"

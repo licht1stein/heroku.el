@@ -27,4 +27,6 @@ Connect to an app and run python shell there.
 - ~heroku-restart~
 Restart an app.
 - ~heroku-destroy~
- Permanently destroy an app
+Permanently destroy an app
+- ~heroku-info~
+Detailed app info
