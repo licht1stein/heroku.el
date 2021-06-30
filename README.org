@@ -1,7 +1,7 @@
 * Run Heroku CLI commands from Emacs
 
 #+CAPTION: heroku-logs
-[[./demo1.mp4]]
+[[./heroku-logs.gif]]
 
 ** Dependencies
 [[https://devcenter.heroku.com/articles/heroku-cli][Heroku CLI]] must be installed and user must be logged in to use heroku.el
