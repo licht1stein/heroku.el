@@ -137,6 +137,4 @@ If `heroku-app-list' is nil, also prompt if user wants to have the app-list upda
 
 (provide 'heroku)
 
-(provide 'heroku)
-
 ;;; heroku.el ends here
