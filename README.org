@@ -7,7 +7,7 @@
 [[https://devcenter.heroku.com/articles/heroku-cli][Heroku CLI]] must be installed and user must be logged in to use heroku.el
 
 ** Installation
-You can use [[https://github.com/jwiegley/use-package][use-package]] and [[https://github.com/raxod502/straight.el][stragiht.el]] to install:
+You can use [[https://github.com/jwiegley/use-package][use-package]] and [[https://github.com/raxod502/straight.el][straight.el]] to install:
 
 #+begin_src emacs-lisp
 (use-package heroku
