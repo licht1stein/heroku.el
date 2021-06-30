@@ -30,3 +30,5 @@ Restart an app.
 Permanently destroy an app
 - ~heroku-info~
 Detailed app info
+- ~heroku-rename~
+Rename an app.

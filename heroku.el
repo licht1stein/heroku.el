@@ -85,6 +85,17 @@
     (switch-to-buffer-other-window buffer-name)
     ))
 
+(defun heroku-rename ()
+  "Rename a Heroku app"
+  (interactive)
+  (let* ((app-name (completing-read "Enter Heroku app name: " heroku-app-list)) (new-name (read-string (format "Enter new name for %s: " app-name))) (buffer-name (format "*Heroku Rename: %s" app-name)))
+    (if (gnus-yes-or-no-p (format "Confirm renaming %s -> %s?" app-name new-name))
+        (progn
+          (make-comint-in-buffer "heroku-rename" buffer-name "heroku" nil "apps:rename" "-a" app-name new-name)
+          (switch-to-buffer-other-window buffer-name))
+      (message "Heroku command canceled"))
+    ))
+
 (defun heroku-restart ()
   "Restart a Heroku app"
   (interactive)
