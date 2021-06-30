@@ -64,6 +64,20 @@
     (sleep-for 3)
     (switch-to-buffer-other-window buffer-name)))
 
+(defun heroku-destroy ()
+  "Permanently destroy a Heroku app"
+  (interactive)
+  (let* ((app-name (completing-read "Enter Heroku app name: " heroku-app-list)) (buffer-name (format "*Heroku Destroy: %s" app-name)))
+    (if  (and
+          (yes-or-no-p (format "Do you really want destroy %s?" app-name))
+          (string-equal app-name (read-string (format  "Type the app name once again to confirm [%s]: " app-name))))
+        (progn
+          (make-comint-in-buffer "heroku-destroy" buffer-name "heroku" nil "apps:destroy" "-a" app-name (format "--confirm=%s" app-name))
+          (sleep-for 3)
+          (switch-to-buffer-other-window buffer-name))
+      (message "Heroku command canceled"))))
+
+
 (defun heroku-restart ()
   "Restart a Heroku app"
   (interactive)
