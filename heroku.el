@@ -28,8 +28,7 @@ Argument S Checks if s is an app name."
 Argument S string to be parsed into a list of app names."
   (let
       ((apps (seq-filter 'heroku--not-list-service-string-p (split-string s "\n"))))
-    (mapcar 'car (mapcar 'split-string apps))
-    ))
+    (mapcar 'car (mapcar 'split-string apps))))
 
 (defun heroku--parse-list-buffer-and-setq (buffer-name)
   "Parse `BUFFER-NAME` and convert it's contents into a list of app names."
@@ -132,8 +131,7 @@ If `heroku-app-list' is nil, also prompt if user wants to have the app-list upda
         (progn
           (make-comint-in-buffer "heroku-rename" buffer-name "heroku" nil "apps:rename" "-a" app-name new-name)
           (switch-to-buffer-other-window buffer-name))
-      (message "Heroku command canceled"))
-    ))
+      (message "Heroku command canceled"))))
 
 (defun heroku-restart ()
   "Restart a Heroku app."
@@ -141,8 +139,15 @@ If `heroku-app-list' is nil, also prompt if user wants to have the app-list upda
   (let* ((app-name (heroku--read-app-name)) (buffer-name (format "*Heroku Restart Report: %s" app-name)))
     (message (format "Restarting heroku app:  %s..." app-name))
     (make-comint-in-buffer "heroku-restart" buffer-name "heroku" nil "restart" "-a" app-name)
-    (message (ensure-buffer-string-blocking buffer-name))
-    ))
+    (message (ensure-buffer-string-blocking buffer-name))))
+
+(defun heroku-addons ()
+  "Show add-ons info for a Heroku app."
+  (interactive)
+  (let* ((app-name (heroku--read-app-name)) (buffer-name (format "*Heroku Addons: %s" app-name)))
+    (message (format "Getting info on %s add-ons..." app-name))
+    (make-comint-in-buffer "heroku-addons-info" buffer-name "heroku" nil "addons" "-a" app-name)
+    (switch-to-buffer-other-window buffer-name)))
 
 (provide 'heroku)
 
