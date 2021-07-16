@@ -36,3 +36,7 @@ Rename an app.
 List buildpacks for an app.
 - ~heroku-addons~
 List app add-ons.
+- ~heroku-config-list~
+List all environment variables on an app.
+- ~heroku-config-set~
+Set an environment variable on an app.

@@ -149,6 +149,27 @@ If `heroku-app-list' is nil, also prompt if user wants to have the app-list upda
     (make-comint-in-buffer "heroku-addons-info" buffer-name "heroku" nil "addons" "-a" app-name)
     (switch-to-buffer-other-window buffer-name)))
 
+(defun heroku-config-set ()
+  "Set an environment variable on a Heroku app."
+  (interactive)
+  (let* ((app-name (heroku--read-app-name))
+         (buffer-name (format "*Heroku Config Set: %s" app-name))
+         (env-name (read-string (format "Enter variable name on %s: " app-name)))
+         (env-value (read-string (format "Enter variable value for %s: " env-name))))
+    (if (gnus-yes-or-no-p (format "Confirm setting %s=%s on %s?" env-name env-value app-name))
+        (progn (make-comint-in-buffer "heroku-config-set" buffer-name "heroku" nil "config:set"
+                                      (format "%s=%s" env-name env-value) "-a" app-name)
+               (message "Done: %s=%s on %s" env-name env-value app-name)))))
+
+(defun heroku-config-list ()
+  "List all environment variables on a Heroku app."
+  (interactive)
+  (let* ((app-name (heroku--read-app-name))
+         (buffer-name (format "*Heroku Config: %s" app-name)))
+    (message (format "Getting config variables for %s" app-name))
+    (make-comint-in-buffer "heroku-config" buffer-name "heroku" nil "config" "-a" app-name)
+    (switch-to-buffer-other-window buffer-name)))
+
 (provide 'heroku)
 
 ;;; heroku.el ends here
