@@ -84,15 +84,6 @@ If `heroku-app-list' is nil, also prompt if user wants to have the app-list upda
     (switch-to-buffer-other-window buffer-name)
     ))
 
-(defun heroku-logs ()
-  "Connect and stream logs of a Heroku app."
-  (interactive)
-  (let* ((app-name (heroku--read-app-name)) (buffer-name (format "*Heroku Logs: %s" app-name)))
-    (message (format "Gettings Heroku logs for %s..." app-name))
-    (make-comint-in-buffer "heroku-logs" buffer-name "heroku" nil "logs" "-t" "-a" app-name)
-    (sleep-for 3)
-    (switch-to-buffer-other-window buffer-name)))
-
 (defun heroku-destroy ()
   "Permanently destroy a Heroku app."
   (interactive)
@@ -169,6 +160,59 @@ If `heroku-app-list' is nil, also prompt if user wants to have the app-list upda
     (message (format "Getting config variables for %s" app-name))
     (make-comint-in-buffer "heroku-config" buffer-name "heroku" nil "config" "-a" app-name)
     (switch-to-buffer-other-window buffer-name)))
+
+
+(defvar heroku-logs-mode-map
+  (let ((map (nconc (make-sparse-keymap) comint-mode-map)))
+    ;; example definition
+    (define-key map "\t" 'completion-at-point)
+    map)
+  "Basic mode map for `run-heroku-logs'")
+
+(defun heroku-logs--initialize ()
+  "Helper function to initialize Heroku-Logs"
+  ;; (setq comint-process-echoes t)
+  ;; (setq comint-use-prompt-regexp t)
+  )
+
+(defconst heroku-logs-keywords
+  '("INFO" "DEBUG" "ERROR" "WARNING" "WARN"))
+
+(defvar heroku-logs-font-lock-keywords
+  (list
+   ;; highlight all the reserved commands.
+   `(,(concat "\\_<" (regexp-opt heroku-logs-keywords) "\\_>") . font-lock-keyword-face))
+  "Additional expressions to highlight in `heroku-logs-mode'.")
+
+(define-derived-mode heroku-logs-mode comint-mode "Heroku-Logs"
+  "Major mode for `heroku-logs'.
+
+\\<heroku-logs-mode-map>"
+  nil "Heroku-Logs"
+  ;; this sets up the prompt so it matches things like: [foo@bar]
+  ;; (setq comint-prompt-regexp heroku-logs-prompt-regexp)
+  ;; this makes it read only; a contentious subject as some prefer the
+  ;; buffer to be overwritable.
+  (setq comint-prompt-read-only t)
+  ;; this makes it so commands like M-{ and M-} work.
+  (set (make-local-variable 'paragraph-separate) "\\'")
+  (set (make-local-variable 'font-lock-defaults) '(heroku-logs-font-lock-keywords t))
+  ;; (set (make-local-variable 'paragraph-start) heroku-logs-prompt-regexp)
+  )
+
+(set (make-local-variable 'font-lock-defaults) '(heroku-logs-font-lock-keywords t))
+
+;; this has to be done in a hook. grumble grumble.
+(add-hook 'heroku-logs-mode-hook 'heroku-logs--initialize)
+
+(defun heroku-logs ()
+  "Connect and stream logs of a Heroku app."
+  (interactive)
+  (let* ((app-name (heroku--read-app-name)) (buffer-name (format "*Heroku Logs: %s" app-name)))
+    (message (format "Gettings Heroku logs for %s..." app-name))
+    (make-comint-in-buffer "heroku-logs" buffer-name "heroku" nil "logs" "-t" "-a" app-name)
+    (pop-to-buffer-same-window buffer-name)
+    (heroku-logs-mode)))
 
 (provide 'heroku)
 
