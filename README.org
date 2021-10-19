@@ -1,4 +1,4 @@
-* Run Heroku CLI commands from Emacs
+* Emacs interface for Heroku CLI
 
 #+CAPTION: heroku-logs
 [[./heroku-logs.gif]]
