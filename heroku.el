@@ -118,6 +118,49 @@
   [["Execute"
     ("l" "display log output" heroku-logs-command)]])
 
+(transient-define-prefix heroku-run-dispatch ()
+  [[:description heroku--header-w-target-command
+		 "run a one-off process inside a heroku dyno\n"
+		 "Required"
+		 ("s" "Select target app" heroku-select-app)
+		 ("c" "Command to run (e.g. bash)" heroku-select-run-command)
+
+		 "\nArguments"
+		 ("-e" "environment variables to set (use ';' to split multiple vars)" "env=")
+		 ("-r" "git remote of app to use" "--remote=")
+		 ("-s" "dyno size" "--size=")
+		 ("-x" "passthrough the exit code of the remote command" "--exit-code")
+		 ("-nn" "disables notification when dyno is up (alternatively use
+                       HEROKU_NOTIFICATIONS=0)" "--no-notify")
+		 ("-nt" "force the command to not run in a tty" "--no-tty")
+		 ("-t" "process type" "--type=")]]
+  [["Execute"
+    ("r" "run" heroku-run-command)
+    ("d" "run:detached" heroku-run-detached)
+    ("B" "run bash" heroku-run-bash)
+    ("p" "run python" heroku-run-python)]])
+
+(comment
+ (transient-define-prefix heroku-addons-dispatch ()
+   "Dispatch heroku run."
+   [[:description heroku--header
+		  "App"
+		  ("s" "Select target app" heroku-select-app)
+		  ("S" "Clear selected app" heroku-clear-app)
+
+		  "\nArguments"
+		  ("-r" " git remote of app to use" "--remote=")
+		  ("-j" " output in json format" "--json")
+		  ("-as" "--as=as                  name for add-on attachment" "--as=")
+		  ("-c"  " --confirm=confirm        overwrite existing add-on attachment with same name" "--confirm=")
+		  ("-C" " --credential=credential  credential name for scoped access to Heroku Postgres" "--credential=")]]
+   [["Execute"
+     ("l" " addons            list your add-ons and attachments" heroku-addons)
+     ("a" " addons:attach     attach an existing add-on resource to an app" heroku-addons:attach)
+     ("a" " addons:create     attach an existing add-on resource to an app" heroku-addons:create)
+     ("d" " addons:destroy    permanently destroy an add-on resource" heroku-addons:destroy)
+     ("de" " addons:detach     detach an existing add-on resource from an app" heroku-addons:detach)]]))
+
 
 (transient-define-infix heroku-set-target-user ()
   :description "Set target user email"
