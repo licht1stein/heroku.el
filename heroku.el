@@ -16,10 +16,31 @@
 (require 'dash)
 (require 's)
 
+(defcustom heroku-app-list nil
+  "List of apps on Heroku."
+  :group 'heroku
+  :type 'list)
+
 (defvar-local heroku-view-title nil)
-(setq heroku-app-list nil)
-(setq heroku-selected-app nil)
+(defvar heroku-selected-app nil "Heroku app to run commands against.")
+(defvar heroku-target-process nil "Process to run in heroku run.")
 (setq heroku-target-email nil)
+
+(comment
+ (setq heroku-target-process nil))
+
+(defvar-local heroku-timestamp-regex "^[[:digit:]]\\{4\\}-[[:digit:]]\\{2\\}-[[:digit:]]\\{2\\}T[[:digit:]:\+\.]*")
+(defvar-local heroku-app-name-regex "[[:graph:]]*\\[[[:alnum:]\.]*\]")
+
+
+(defun heroku-cli-installed-p ()
+  "Check if heroku cli is installed."
+  (interactive)
+  (let* ((output (shell-command-to-string "heroku")))
+    (s-starts-with-p "CLI to interact with Heroku" output)))
+
+(comment
+ (heroku-cli-installed-p))
 
 (defface heroku-selected-app-face
   '((((class color) (background light)) :foreground "DarkOliveGreen4")
@@ -32,6 +53,25 @@
   "Face for warnings."
   :group 'heroku-faces)
 
+(defcustom heroku-logs-hide-timestamp-prefix nil
+  "Hide heroku timestamp prefix in logs.
+
+Useful if your logging system prints it's own timestamp."
+  :group 'heroku
+  :type 'boolean)
+
+(defun heroku-get-app-list ()
+  "Run heroku apps and parse all apps into a list of strings."
+  (->> (shell-command-to-string "heroku apps")
+       (s-match-strings-all "^[[:alnum:]-]*")
+       -flatten
+       (-filter (lambda (el) (not (string= "" el))))))
+
+(defun heroku-select-app-fn (&optional prompt)
+  (interactive )
+  (->> (completing-read (or prompt "Select app: ") heroku-app-list)
+       (setq heroku-selected-app)))
+
 (defclass heroku-view--variable (transient-variable)
   ;; FIXME: We don't need :scope, but maybe a slot has to be defined.
   ((scope       :initarg :scope)))
@@ -40,7 +80,7 @@
   (s-concat (propertize  "Selected app: " 'face 'transient-heading)
 	    (if heroku-selected-app
 		(propertize heroku-selected-app 'face 'heroku-selected-app-face)
-	      (propertize  "No app selected, please select" 'face 'heroku-warning))
+	      (propertize  "No app selected, please select" 'face 'heroku-warning-face))
 	    "\n"))
 
 (defun heroku--header-w-target-user ()
@@ -48,17 +88,111 @@
 	    (propertize "Target email: " 'face 'transient-heading)
 	    (if heroku-target-email
 		(propertize heroku-target-email 'face 'heroku-selected-app-face)
-	      (propertize "No target user selectd, please select" 'face 'heroku-warning))
+	      (propertize "No target user set, please set" 'face 'heroku-warning-face))
 	    "\n"))
 
+(defun heroku--header-w-target-command ()
+  (s-concat (heroku--header)
+	    (propertize "Command: " 'face 'transient-heading)
+	    (if heroku-target-process
+		(propertize heroku-target-process 'face 'heroku-selected-app-face)
+	      (propertize "No command set, please set" 'face 'heroku-warning-face))
+	    "\n"))
+
+
+(defun heroku-make-invisible (my-re)
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward my-re nil t)
+      (let* ((invisible-overlay (make-overlay (match-beginning 0) (match-end 0))))
+	(overlay-put invisible-overlay 'invisible t)))))
+
+(define-derived-mode heroku-logs-mode comint-mode "Heroku Logs"
+  (read-only-mode))
+
+(defface heroku-grey-face
+  '((((class grayscale) (background light)) :foreground "DimGray" :slant italic)
+    (((class grayscale) (background dark))  :foreground "LightGray" :slant italic)
+    (((class color) (min-colors 88) (background light)) :foreground "VioletRed4")
+    (((class color) (min-colors 88) (background dark))  :foreground "LightSalmon")
+    (((class color) (min-colors 16) (background light)) :foreground "RosyBrown")
+    (((class color) (min-colors 16) (background dark))  :foreground "LightSalmon")
+    (((class color) (min-colors 8)) :foreground "green")
+    (t :slant italic))
+  "Font Lock mode face used to highlight strings."
+  :group 'heroku-faces)
+
+(defvar-local heroku--logs-font-rules
+    `((".*DEBUG.*" . 'shadow)
+      (".*INFO.*" . 'term)
+      (".*WARN.*" . 'warning)
+      (".*ERROR.*" . 'transient-amaranth)
+      (".*CRITICAL.*" . 'transient-red)
+      (,heroku-timestamp-regex 0 (progn
+				   (if heroku-logs-hide-timestamp-prefix
+				       (add-text-properties (match-beginning 0)
+							    (match-end 0)
+							    '(invisible t)))))))
+
+(font-lock-add-keywords 'heroku-logs-mode heroku--logs-font-rules)
+
+
+
+
+
+(defun heroku-logs-toggle-timestamps ()
+  "Toggle `heroku-logs-hide-timestamp-prefix'."
+  (interactive)
+  (setq heroku-logs-hide-timestamp-prefix (not heroku-logs-hide-timestamp-prefix)))
+
+(defun heroku-logs-toggle-timestamps ()
+  "Toggle `heroku-logs-hide-timestamp-prefix'."
+  (interactive)
+  (setq heroku-logs-hide-timestamp-prefix (not heroku-logs-hide-timestamp-prefix))
+  (heroku-refresh-font-lock))
 
 (defun heroku-logs-command (&optional args)
   "Connect and stream logs of a Heroku app."
   (interactive (list (transient-args 'heroku-logs-dispatch)))
+  (unless heroku-selected-app (heroku-select-app-fn "Select app for logs: "))
   (let* ((buffer-name (format "*Heroku Logs: %s" heroku-selected-app)))
     (message (format "Gettings Heroku logs for %s..." heroku-selected-app))
     (apply #'make-comint-in-buffer `("heroku-logs" ,buffer-name "heroku" nil "logs" "-a" ,heroku-selected-app ,@args))
+    (with-current-buffer buffer-name
+      (heroku-logs-mode))
     (pop-to-buffer-same-window buffer-name)))
+
+(defun heroku-run-command-general (command &optional args)
+  "Run a one-off process inside heroku dyno."
+  (interactive (list (transient-args 'heroku-run-dispatch)))
+  (unless heroku-selected-app (heroku-select-app-fn "Select app to run command: "))
+  (unless heroku-target-process (setq heroku-target-process (read-from-minibuffer "Command to run: ")))
+  (message (format "Running %s on %s..." heroku-target-process heroku-selected-app))
+  (let* ((buffer-name (format "*Heroku Run: %s" heroku-selected-app)))
+    (apply #'make-comint-in-buffer `("heroku-run" ,buffer-name "heroku" nil ,command ,heroku-target-process "-a" ,heroku-selected-app ,@args))
+    (pop-to-buffer-same-window buffer-name)))
+
+(comment
+ (make-comint-in-buffer "heroku-run" "*heroku run test" "heroku" nil "run" "python" "-a" "closerbot")
+ (heroku-run-command))
+
+(defun heroku-run-detached (&optional args)
+  (interactive (list (transient-args 'heroku-run-dispatch)))
+  (async-shell-command  (apply ) `("heroku-run" ,buffer-name "heroku" nil ,command ,heroku-target-process "-a" ,heroku-selected-app ,@args)))
+
+(defun heroku-run-command (&optional args)
+  (interactive)
+  (heroku-run-command-general "run" args))
+
+(defun heroku-run-python (&optional args)
+  (interactive)
+  (setq heroku-target-process "python")
+  (heroku-run-command args))
+
+(defun heroku-run-bash (&optional args)
+  (interactive)
+  (setq heroku-target-process "bash")
+  (heroku-run-command args))
 
 (defmacro heroku-access-defcommand (name command prefix)
   `(defun ,name (&optional args)
@@ -72,18 +206,53 @@
 	      (s-join " ")
 	      async-shell-command)))))
 
+(comment
+ (defmacro heroku-simple-defcommand (command prefix)
+   (let* ((s-command (pp-to-string command))
+	  (func-name (->> (s-concat "heroku-" s-command) make-symbol))
+	  (docstring (s-concat "Execute Heroku command " s-command ".")))
+     `(defun ,func-name (&optional args)
+	,docstring
+	(interactive (list (transient-args ,prefix)))
+	(->> (list "heroku" ,s-command args (if heroku-selected-app (s-concat "-a" heroku-selected-app)))
+	     -flatten
+	     (s-join " ")
+	     async-shell-command)))))
+
+
 (heroku-access-defcommand heroku-access-add "access:add" 'heroku-access-dispatch)
 (heroku-access-defcommand heroku-access-remove "access:remove" 'heroku-access-dispatch)
 (heroku-access-defcommand heroku-access-update "access:update" 'heroku-access-dispatch)
+
+(comment
+ (declare heroku-addons-dispatch)
+
+
+ (heroku-simple-defcommand addons 'heroku-addons-dispatch)
+ (heroku-simple-defcommand addons:attach 'heroku-addons-dispatch)
+ (heroku-simple-defcommand addons:create 'heroku-addons-dispatch)
+ (heroku-simple-defcommand addons:destroy 'heroku-addons-dispatch)
+ (heroku-simple-defcommand addons:detach 'heroku-addons-dispatch))
+
+(defun heroku/make-command-handler (prefix command)
+  (lambda (&optional args)
+    (interactive (list (transient-args 'prefix)))
+    (message (pp-to-string args))))
 
 (transient-define-prefix heroku-dispatch ()
   "Show Org QL View dispatcher."
   [[:description heroku--header
 		 "App"
-		 ("s" "Select target app" heroku-select-app)]]
+		 ("s" "Select target app" heroku-select-app)
+		 ("S" "Clear target app" heroku-clear-app)
+		 ("R" "Refresh app list" heroku-refresh-app-list)]]
   [["Commands"
-    ("a" "Access" heroku-access-dispatch)
-    ("l" "Logs" heroku-logs-dispatch)]])
+    ;; ("a" "Access" heroku-access-dispatch)
+    ;; ("A" "Addons" heroku-addons-dispatch)
+    ("l" "Logs" heroku-logs-dispatch)
+    ("r" "Run" heroku-run-dispatch)
+    ;; ("f" "try-maker" (heroku/make-command-handler 'heroku-addons-dispatch "command:foo"))
+    ]])
 
 (transient-define-prefix heroku-access-dispatch ()
   [[:description heroku--header-w-target-user
@@ -94,10 +263,6 @@
     ("-r" "git remote of app to use" "--remote=")
     ("-p" "list of permissions comma separated (deploy, manage, operate)" "--permissions=")
     ("-j" "output in json format" "--json")]]
-  ;; [["Permissions"
-  ;;   ("d" "deploy" "deploy")
-  ;;   ("v" "view" "view")
-  ;;   ("o" "operate" "operate")]]
   [["Execute"
     ("a" "access:add     add new user to your app" heroku-access-add)
     ("r" "access:remove  remove users from a team app" heroku-access-remove)
@@ -130,8 +295,7 @@
 		 ("-r" "git remote of app to use" "--remote=")
 		 ("-s" "dyno size" "--size=")
 		 ("-x" "passthrough the exit code of the remote command" "--exit-code")
-		 ("-nn" "disables notification when dyno is up (alternatively use
-                       HEROKU_NOTIFICATIONS=0)" "--no-notify")
+		 ("-nn" "disables notification when dyno is up (alternatively use HEROKU_NOTIFICATIONS=0)" "--no-notify")
 		 ("-nt" "force the command to not run in a tty" "--no-tty")
 		 ("-t" "process type" "--type=")]]
   [["Execute"
@@ -182,7 +346,7 @@
 		    (message "Refreshing app list...")
 		    (heroku-refresh-app-list)
 		    (message "App list refreshed"))))
-	    (setq heroku-selected-app (completing-read "App: " heroku-app-list))))
+	    (heroku-select-app-fn)))
 
 (transient-define-infix heroku-select-run-command ()
   :description "Set command to run."
@@ -204,7 +368,7 @@
   "Refresh list of app available to Heroku CLI."
   (interactive)
   (message "Refreshing Heroku app list...")
-  (setq heroku-app-list '("clj-country-news" "closerbot" "ufybot"))
+  (setq heroku-app-list (heroku-get-app-list))
   (message "Heroku app list refreshed"))
 
 
