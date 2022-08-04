@@ -57,6 +57,9 @@
 (defun heroku-get-app-name ()
   (aref (tabulated-list-get-entry) 0))
 
+(defun heroku-get-app-name-propertized ()
+  (propertize (heroku-get-app-name) 'face 'transient-argument))
+
 (defun heroku-get-logs (&optional args)
   (interactive (list (transient-args 'heroku-logs-transient)))
   (let* ((app (heroku-get-app-name))
@@ -69,7 +72,7 @@
 
 (transient-define-prefix heroku-logs-transient ()
   :value (list "--tail")
-  [[:description (lambda () "" (s-concat "Get logs for " (propertize (heroku-get-app-name) 'face 'transient-argument)))
+  [[:description (lambda () (s-concat "Get logs for " (heroku-get-app-name-propertized)))
 
 		 "\nArguments"
 		 ("-d" "only show output from this dyno type (web, worker)" "--dyno=")
@@ -80,11 +83,62 @@
   [["Execute"
     ("l" "display log output" heroku-get-logs)]])
 
+(comment
+ (let ((app "app")
+       (command "comm")
+       (args '("--foo" "--bar")))
+   ))
+
+(defun heroku-run-command (command &optional args detached)
+  "Run a one-off process inside heroku dyno."
+  (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient) nil))
+  (let* ((app (heroku-get-app-name))
+	 (buffer-name (format "*Heroku Run: %s" app)))
+    (message (format "Running %s on %s..." command app))
+    (if detached
+	(async-shell-command (s-join " " `("heroku run:detached -a" ,app ,command ,@args)))
+      (progn
+	(apply #'make-comint-in-buffer "heroku-run" buffer-name "heroku" nil "run" command "-a" app args)
+	(pop-to-buffer-same-window buffer-name)))))
+
+(defun heroku-run-detached (command &optional args)
+  (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient)))
+  (heroku-run-command command args t))
+
+(defun heroku-run-python (&optional args)
+  (interactive (list (transient-args 'heroku-run-transient)))
+  (heroku-run-command "python"))
+
+(defun heroku-run-bash (&optional args)
+  (interactive (list (transient-args 'heroku-run-transient)))
+  (heroku-run-command "bash"))
+
+(transient-define-prefix heroku-run-transient ()
+  [[:description (lambda () (s-concat "Run a one-off process inside " (heroku-get-app-name-propertized)))
+		 ""]]
+
+  [["Arguments"
+    ("-e" "environment variables to set (use ';' to split multiple vars)" "env=")
+    ("-r" "git remote of app to use" "--remote=")
+    ("-s" "dyno size" "--size=")
+    ("-x" "passthrough the exit code of the remote command" "--exit-code")
+    ("-nn" "disables notification when dyno is up (alternatively use HEROKU_NOTIFICATIONS=0)" "--no-notify")
+    ("-nt" "force the command to not run in a tty" "--no-tty")
+    ("-t" "process type" "--type=")]]
+
+  [["Run command"
+    ("r" "run" heroku-run-command)
+    ("d" "run:detached" heroku-run-detached)]
+   ["Run presets"
+    ("b" "bash" heroku-run-bash)
+    ("p" "python" heroku-run-python)]])
+
 (transient-define-prefix heroku-help-transient ()
   [[:description "Heroku.el commands"]]
   [["Commands"
     ("g" "Refresh" heroku-app-list-mode-refresh)
-    ("l" "Logs" heroku-logs-transient)]]
+    ("l" "Logs" heroku-logs-transient)
+    ("r" "run" heroku-run-transient)]]
   [["Heroku.el"
     ("?" "Help" heroku-help-transient)
     ("q" "Quit" quit-window)]])
@@ -127,8 +181,10 @@
   (let* ((map_ (make-sparse-keymap)))
     (define-key map_ (kbd "g") 'heroku-app-list-mode-refresh)
     (define-key map_ (kbd "l") 'heroku-logs-transient)
+    (define-key map_ (kbd "r") 'heroku-run-transient)
     (define-key map_ (kbd "?") 'heroku-help-transient)
-    map_))
+    map_)
+  "Keympa for `heroku-app-list-mode'.")
 
 (defun heroku ()
   "Start heroku.el and choose app to operate on."
