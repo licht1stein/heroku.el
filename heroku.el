@@ -176,16 +176,29 @@
   :variable 'heroku-selected-app
   :argument ""
   :reader (lambda (prompt _initial-input history)
-	    (if heroku-app-list
-		(setq heroku-selected-app (completing-read "Select app: " heroku-app-list))
+	    (unless heroku-app-list
 	      (if (y-or-n-p "App list is empty. Refresh?")
 		  (progn
 		    (message "Refreshing app list...")
 		    (heroku-refresh-app-list)
-		    (message "App list refreshed"))
-		))))
+		    (message "App list refreshed"))))
+	    (setq heroku-selected-app (completing-read "App: " heroku-app-list))))
 
+(transient-define-infix heroku-select-run-command ()
+  :description "Set command to run."
+  :class 'heroku-view--variable
+  :variable 'heroku-target-process
+  :argument ""
+  :reader (lambda (prompt _initial-input history)
+	    (setq heroku-target-process (completing-read "Command: " heroku-target-process))))
 
+(transient-define-infix heroku-clear-app ()
+  :description "Clear selected Heroku app."
+  :class 'heroku-view--variable
+  :variable 'heroku-selected-app
+  :argument ""
+  :reader (lambda (prompt _initial-input history)
+	    (setq heroku-selected-app nil)))
 
 (defun heroku-refresh-app-list ()
   "Refresh list of app available to Heroku CLI."
