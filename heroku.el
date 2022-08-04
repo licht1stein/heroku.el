@@ -30,7 +30,7 @@
   "Heroku app list mode."
   (let ((columns [("App" 50) ("Region" 20) ("Collab" 50)])
 	(rows (->> heroku-app-list
-		   (mapcar (lambda (x) `(nil [,x "us" "private"]))))))
+		   (mapcar (lambda (x) `(nil [,@x]))))))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
@@ -39,18 +39,6 @@
 
 (define-derived-mode heroku-logs-mode comint-mode "Heroku Logs"
   (read-only-mode))
-
-(defface heroku-grey-face
-  '((((class grayscale) (background light)) :foreground "DimGray" :slant italic)
-    (((class grayscale) (background dark))  :foreground "LightGray" :slant italic)
-    (((class color) (min-colors 88) (background light)) :foreground "VioletRed4")
-    (((class color) (min-colors 88) (background dark))  :foreground "LightSalmon")
-    (((class color) (min-colors 16) (background light)) :foreground "RosyBrown")
-    (((class color) (min-colors 16) (background dark))  :foreground "LightSalmon")
-    (((class color) (min-colors 8)) :foreground "green")
-    (t :slant italic))
-  "Font Lock mode face used to highlight strings."
-  :group 'heroku-faces)
 
 (defvar-local heroku--logs-font-rules
     `((".*DEBUG.*" . 'shadow)
@@ -101,12 +89,27 @@
     ("?" "Help" heroku-help-transient)
     ("q" "Quit" quit-window)]])
 
+(defvar-local heroku-app-name-re "^[[:alnum:]-]*")
+(defvar-local heroku-region-re "\(\\([[:alnum:]]*\\)\)")
+(defvar-local heroku-collab-re "[[:alnum:]]*@[[:alnum:]\.-_]*")
+
+(defun heroku--extract-app-details (s)
+  (let ((name (s-match heroku-app-name-re s))
+	(region (cdr (s-match heroku-region-re s)))
+	(collab (s-match heroku-collab-re s)))
+    (-flatten (list name (or region "us") (or collab "private")))))
+
 (defun heroku-get-app-list ()
   "Run heroku apps and parse all apps into a list of strings."
   (->> (shell-command-to-string "heroku apps -A")
-       (s-match-strings-all "^[[:alnum:]-]*")
-       -flatten
-       (-filter (lambda (el) (not (string= "" el))))))
+       (s-split "\n")
+       (-filter (lambda (s) (and (not (s-starts-with-p "===" s)) (s-match heroku-app-name-re s))))
+       (-filter (lambda (s) (not (string= "" s))))
+       (-sort #'string<)
+       (-map #'heroku--extract-app-details)))
+
+(comment
+ (heroku-get-app-list))
 
 (defun heroku-refresh-app-list ()
   "Refresh list of app available to Heroku CLI."
