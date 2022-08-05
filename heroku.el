@@ -44,11 +44,36 @@
        (-map (lambda (s) (s-split-up-to ":" s 1)))
        (-map (lambda (el) (list (s-trim (car el)) (s-trim-left (cadr el)))))))
 
-(comment
- (setq tdata (heroku-get-app-config "ufybot"))
- (setq gm (alist-get "GMAIL_CREDENTIALS_JSON" tdata nil nil 'string=))
+(defun heroku-app-config-set (app key value)
+  (message "Setting %s on %s..." key app)
+  (let* ((result (->> (format "heroku config:set %s=%s -a %s" key value app)
+		      call-process-shell-command)))
+    (if (eq result 0)
+	(message "%s" "Done.")
+      (message "Something went wrong."))))
 
- )
+(defun heroku-app-config-unset (app key)
+  (interactive (list heroku--app-name (car (heroku-get-config-kv))))
+  (if (y-or-n-p (format "Are you sure you want to delete %s on %s?" key app))
+      (progn
+	(with-temp-message (format "Unsetting %s..." key)
+	  (->> (format "heroku config:unset %s -a %s" key app)
+	       call-process-shell-command))
+	(heroku-app-config-refresh)
+	(message "Done. App will restart."))))
+
+(defun heroku-app-config-create (app key value)
+  (interactive (list heroku--app-name (read-from-minibuffer "New key: ") (read-from-minibuffer "Value: ")))
+  (if (alist-get key heroku--config-original nil nil 'string=)
+      (progn
+	(if (y-or-n-p (format "Key %s already exists. Edit it instead?" key))
+	    (progn
+	      (heroku-config-edit)
+	      (erase-buffer)
+	      (insert value))))
+    (if (y-or-n-p (format "Create %s=%s on %s?" key value app))
+	(progn (heroku-app-config-set app key value)
+	       (heroku-app-config-refresh)))))
 
 (defun heroku-refresh-app-list ()
   "Refresh list of app available to Heroku CLI."
@@ -76,9 +101,18 @@
 		   (mapcar (lambda (x) `(nil [,@x]))))))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
-    (tabulated-list-inpit-header)
+    (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
+
+(defvar heroku-app-config-mode-map
+  (let* ((map_ (make-sparse-keymap)))
+    (define-key map_ (kbd "?") 'heroku-config-transient)
+    (define-key map_ (kbd "e") 'heroku-config-edit)
+    (define-key map_ (kbd "g") 'heroku-app-config-refresh)
+    (define-key map_ (kbd "d") 'heroku-app-config-unset)
+    (define-key map_ (kbd "c") 'heroku-app-config-create)
+    map_))
 
 (define-derived-mode heroku-app-config-mode tabulated-list-mode "Heroku App Config"
   "Heroku app config and details mode."
@@ -90,6 +124,13 @@
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
+
+(defun heroku-app-config-refresh ()
+  (interactive)
+  (message "Refreshing %s config..." heroku--app-name)
+  (setq heroku--config-original (heroku-get-app-config heroku--app-name))
+  (heroku-app-config-mode)
+  (message "Done. App will restart."))
 
 (defun heroku-app-config (app)
   "Show environment variables for app."
@@ -170,6 +211,63 @@
   (interactive (list (transient-args 'heroku-run-transient)))
   (heroku-run-command "bash"))
 
+(defun heroku-get-config-kv ()
+  (list (aref (tabulated-list-get-entry) 0)
+	(aref (tabulated-list-get-entry) 1)))
+
+(defvar heroku-env-edit-mode-map
+  (let* ((map_ (make-sparse-keymap)))
+    (define-key map_ (kbd "C-c c") 'heroku-config-edit-save)
+    (define-key map_ (kbd "C-c C-k") 'heroku-config-edit-cancel)
+    map_)
+  "Keymap for `heroku-env-edit-mode'.")
+
+(defun heroku-config-edit-cancel ()
+  (interactive)
+  (kill-buffer (current-buffer))
+  (delete-window))
+
+(defun heroku-config-edit-save ()
+  (interactive)
+  (let ((new-value (s-trim (buffer-substring-no-properties (point-min) (point-max)))))
+    (if (string= new-value heroku--env-old-value)
+	(progn
+	  (message "Value has not changed. If you want to abort press C-c C-k"))
+      (if (y-or-n-p "Do you want to save changes to Heroku?")
+	  (progn (message "Saving to Heroku...")
+		 (heroku-app-config-set heroku--app-name heroku--env-key new-value)
+		 (message (s-concat heroku--env-key " " new-value))
+		 (heroku-config-edit-cancel)
+		 (heroku-app-config-refresh))))))
+
+(define-derived-mode heroku-env-edit-mode fundamental-mode "Heroku Edit Env"
+  (defvar-local heroku--env-key nil)
+  (defvar-local heroku--env-old-value nil)
+  (message "Press `C-c c' to save or `C-c C-k` to cancel"))
+
+(defun heroku-config-edit ()
+  (interactive)
+  (let* ((kv (heroku-get-config-kv))
+	 (key (car kv))
+	 (value (cadr kv))
+	 (win (split-window-below))
+	 (buff (format "*heroku-edit")))
+    (message (format "Editing environment variable %s..." key))
+    (select-window win)
+    (switch-to-buffer (get-buffer-create buff))
+    (heroku-env-edit-mode)
+    (setq heroku--env-key key)
+    (setq heroku--env-old-value value)
+    (insert value)))
+
+(transient-define-prefix heroku-config-transient ()
+  [[:description (lambda () (s-concat "Config for " heroku--app-name))
+		 ""]]
+  [["Commands"
+    ("g" "Refresh" heroku-app-config-refresh)
+    ("u" "Unset" heroku-app-config-unset)
+    ("e" "Edit" heroku-config-edit)]])
+
 (transient-define-prefix heroku-run-transient ()
   [[:description (lambda () (s-concat "Run a one-off process inside " (heroku-get-app-name-propertized)))
 		 ""]]
@@ -196,7 +294,7 @@
     ("g" "Refresh" heroku-app-list-mode-refresh)
     ("c" "Config" heroku-app-config)
     ("l" "Logs" heroku-logs-transient)
-    ("r" "run" heroku-run-transient)]]
+    ("r" "Run" heroku-run-transient)]]
   [["Heroku.el"
     ("?" "Help" heroku-help-transient)
     ("q" "Quit" quit-window)]])
@@ -544,8 +642,6 @@ Useful if your logging system prints it's own timestamp."
    :argument ""
    :reader (lambda (prompt _initial-input history)
 	     (setq heroku-target-process (completing-read "Command: " heroku-target-process))))
-
- p
 
 
  (define-infix-command heroku-foo ()
