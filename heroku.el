@@ -1,4 +1,4 @@
-;;; heroku.el --- Heroku CLI for Emacs  -*- coding: utf-8; lexical-binding: t; -*-
+;;; heroku.el --- Heroku CLI similar to Magit  -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Copyright (c) 2022 Mykhaylo Bilyanskyy <mb@blaster.ai>
 
@@ -246,7 +246,7 @@
 
 (defvar heroku-env-edit-mode-map
   (let* ((map_ (make-sparse-keymap)))
-    (define-key map_ (kbd "C-c c") 'heroku-config-edit-save)
+    (define-key map_ (kbd "C-c '") 'heroku-config-edit-save)
     (define-key map_ (kbd "C-c C-k") 'heroku-config-edit-cancel)
     map_)
   "Keymap for `heroku-env-edit-mode'.")
@@ -274,7 +274,7 @@
 (define-derived-mode heroku-env-edit-mode fundamental-mode "Heroku Edit Env"
   (defvar-local heroku--env-key nil)
   (defvar-local heroku--env-old-value nil)
-  (message "Press `C-c c' to save or `C-c C-k` to cancel"))
+  (message "Press `C-c '` to save or `C-c C-k` to cancel"))
 
 (defun heroku-config-edit ()
   "Edit Heroku config."
