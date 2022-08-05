@@ -16,15 +16,15 @@
 (require 'dash)
 (require 's)
 
-(defvar-local heroku-timestamp-regex "^[[:digit:]]\\{4\\}-[[:digit:]]\\{2\\}-[[:digit:]]\\{2\\}T[[:digit:]:\+\.]*")
+(defvar-local heroku-timestamp-regex "^[[:digit:]]\\{4\\}-[[:digit:]]\\{2\\}-[[:digit:]]\\{2\\}T[[:digit:]:\+\.]*" "Regex pattern of heroku logs standard timestamp.")
+(defvar-local heroku-app-name-re "^[[:alnum:]-]*" "Heroku app name regex.")
+(defvar-local heroku-region-re "\(\\([[:alnum:]]*\\)\)" "Heroku region regex.")
+(defvar-local heroku-collab-re "[[:alnum:]]*@[[:alnum:]\.-_]*" "Heroku collaborator regex.")
 
 (defcustom heroku-app-list nil
   "List of apps on Heroku."
   :group 'heroku
   :type 'list)
-
-(comment
- (setq heroku-app-list nil))
 
 (defun heroku-get-app-list ()
   "Run heroku apps and parse all apps into a list of strings."
@@ -36,8 +36,9 @@
        (-map #'heroku--extract-app-details)))
 
 (defun heroku-app-destroy (app)
+  "Destroy Heroku APP."
   (interactive (list (heroku-get-app-name)))
-  (if (yes-or-no-p (format "Are you sure you want to destroy %s? This cannot be undone." (propertize app 'face 'warning)))
+  (if (yes-or-no-p (format "Are you sure you want to destroy %s?" (propertize app 'face 'warning)))
       (let ((confirmed-name (read-from-minibuffer (format "Type the name of the app to continue [%s]: " app))))
 	(if (string= app confirmed-name)
 	    (progn
@@ -49,6 +50,7 @@
 	  (message "Wrong app name. Cancelled.")))))
 
 (defun heroku-get-app-config (app)
+  "Get config for the APP."
   (interactive)
   (message (format "Getting app config for %s..." app))
   (->> (shell-command-to-string (format "heroku config -a %s" app))
@@ -58,6 +60,7 @@
        (-map (lambda (el) (list (s-trim (car el)) (s-trim-left (cadr el)))))))
 
 (defun heroku-app-config-set (app key value)
+  "In APP set KEY to VALUE."
   (message "Setting %s on %s..." key app)
   (let* ((result (->> (format "heroku config:set %s=%s -a %s" key value app)
 		      call-process-shell-command)))
@@ -66,6 +69,7 @@
       (message "Something went wrong."))))
 
 (defun heroku-app-config-unset (app key)
+  "Unset (delete) config KEY in APP."
   (interactive (list heroku--app-name (car (heroku-get-config-kv))))
   (if (y-or-n-p (format "Are you sure you want to delete %s on %s?" key app))
       (progn
@@ -76,10 +80,11 @@
 	(message "Done. App will restart."))))
 
 (defun heroku-app-config-create (app key value)
+  "Create config KEY with VALUE in APP."
   (interactive (list heroku--app-name (read-from-minibuffer "New key: ") (read-from-minibuffer "Value: ")))
   (if (alist-get key heroku--config-original nil nil 'string=)
       (progn
-	(if (y-or-n-p (format "Key %s already exists. Edit it instead?" key))
+	(if (y-or-n-p (format "Key %s already exists.  Edit it instead?" key))
 	    (progn
 	      (heroku-config-edit)
 	      (erase-buffer)
@@ -126,7 +131,8 @@
     (define-key map_ (kbd "g") 'heroku-app-config-refresh)
     (define-key map_ (kbd "d") 'heroku-app-config-unset)
     (define-key map_ (kbd "c") 'heroku-app-config-create)
-    map_))
+    map_)
+  "Keymap for `heroku-app-config-mode'.")
 
 (define-derived-mode heroku-app-config-mode tabulated-list-mode "Heroku App Config"
   "Heroku app config and details mode."
@@ -140,6 +146,7 @@
     (hl-line-mode)))
 
 (defun heroku-app-config-refresh ()
+  "Refresh app config."
   (interactive)
   (message "Refreshing %s config..." heroku--app-name)
   (setq heroku--config-original (heroku-get-app-config heroku--app-name))
@@ -147,7 +154,7 @@
   (message "Done. App will restart."))
 
 (defun heroku-app-config (app)
-  "Show environment variables for app."
+  "Show environment variables for APP."
   (interactive (list (heroku-get-app-name)))
   (let ((buff (format "*Heroku Config: %s" app)))
     (switch-to-buffer buff)
@@ -173,12 +180,15 @@
 (font-lock-add-keywords 'heroku-logs-mode heroku--logs-font-rules)
 
 (defun heroku-get-app-name ()
+  "Read app name from app list."
   (aref (tabulated-list-get-entry) 0))
 
 (defun heroku-get-app-name-propertized ()
+  "Get app name and propertize it."
   (propertize (heroku-get-app-name) 'face 'transient-argument))
 
 (defun heroku-get-logs (&optional args)
+  "Get Heroku logs for app using ARGS."
   (interactive (list (transient-args 'heroku-logs-transient)))
   (let* ((app (heroku-get-app-name))
 	 (buffer (format "*Heroku Logs: %s*" app)))
@@ -189,6 +199,7 @@
       (pop-to-buffer-same-window buffer))))
 
 (transient-define-prefix heroku-logs-transient ()
+  "Heroku logs transient."
   :value (list "--tail")
   [[:description (lambda () (s-concat "Get logs for " (heroku-get-app-name-propertized)))
 
@@ -202,7 +213,7 @@
     ("l" "display log output" heroku-get-logs)]])
 
 (defun heroku-run-command (command &optional args detached)
-  "Run a one-off process inside heroku dyno."
+  "Run a one-off process with COMMAND with ARGS in DETACHED mode inside heroku dyno."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient) nil))
   (let* ((app (heroku-get-app-name))
 	 (buffer-name (format "*Heroku Run: %s" app)))
@@ -214,18 +225,22 @@
 	(pop-to-buffer-same-window buffer-name)))))
 
 (defun heroku-run-detached (command &optional args)
+  "Run COMMAND with ARGS in detached mode."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient)))
   (heroku-run-command command args t))
 
 (defun heroku-run-python (&optional args)
+  "Run python on Heroku app with ARGS."
   (interactive (list (transient-args 'heroku-run-transient)))
   (heroku-run-command "python"))
 
 (defun heroku-run-bash (&optional args)
+  "Run bash on Heroku app with ARGS."
   (interactive (list (transient-args 'heroku-run-transient)))
   (heroku-run-command "bash"))
 
 (defun heroku-get-config-kv ()
+  "Get config key and value from list."
   (list (aref (tabulated-list-get-entry) 0)
 	(aref (tabulated-list-get-entry) 1)))
 
@@ -237,11 +252,13 @@
   "Keymap for `heroku-env-edit-mode'.")
 
 (defun heroku-config-edit-cancel ()
+  "Cancel editing Heroku config."
   (interactive)
   (kill-buffer (current-buffer))
   (delete-window))
 
 (defun heroku-config-edit-save ()
+  "Save config to Heroku."
   (interactive)
   (let ((new-value (s-trim (buffer-substring-no-properties (point-min) (point-max)))))
     (if (string= new-value heroku--env-old-value)
@@ -260,6 +277,7 @@
   (message "Press `C-c c' to save or `C-c C-k` to cancel"))
 
 (defun heroku-config-edit ()
+  "Edit Heroku config."
   (interactive)
   (let* ((kv (heroku-get-config-kv))
 	 (key (car kv))
@@ -275,6 +293,7 @@
     (insert value)))
 
 (transient-define-prefix heroku-config-transient ()
+  "Heroku config transient."
   [[:description (lambda () (s-concat "Config for " heroku--app-name))
 		 ""]]
   [["Commands"
@@ -284,6 +303,7 @@
     ("e" "Edit" heroku-config-edit)]])
 
 (transient-define-prefix heroku-run-transient ()
+  "Heroku run transient."
   [[:description (lambda () (s-concat "Run a one-off process inside " (heroku-get-app-name-propertized)))
 		 ""]]
 
@@ -304,6 +324,7 @@
     ("p" "python" heroku-run-python)]])
 
 (transient-define-prefix heroku-help-transient ()
+  "Heroku help transient."
   [[:description "Heroku.el commands"]]
   [["Commands"
     ("g" "Refresh" heroku-app-list-mode-refresh)
@@ -315,17 +336,15 @@
     ("?" "Help" heroku-help-transient)
     ("q" "Quit" quit-window)]])
 
-(defvar-local heroku-app-name-re "^[[:alnum:]-]*")
-(defvar-local heroku-region-re "\(\\([[:alnum:]]*\\)\)")
-(defvar-local heroku-collab-re "[[:alnum:]]*@[[:alnum:]\.-_]*")
-
 (defun heroku--extract-app-details (s)
+  "Extract app details from S output of heroku apps."
   (let ((name (s-match heroku-app-name-re s))
 	(region (cdr (s-match heroku-region-re s)))
 	(collab (s-match heroku-collab-re s)))
     (-flatten (list name (or region "us") (or collab "private")))))
 
 (defun heroku-app-list-mode-refresh ()
+  "Refresh Heroku app list."
   (interactive)
   (heroku-refresh-app-list)
   (heroku-app-list-mode))
