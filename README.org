@@ -1,42 +1,24 @@
 * Emacs interface for Heroku CLI
 
-#+CAPTION: heroku-logs
-[[./heroku-logs.gif]]
+This package does to Heroku CLI what Magit did to git. It transforms the ~heroku~ commands into useful, quick and intuitive interface using [[https://github.com/magit/transient][transient]].
 
-** Dependencies
-[[https://devcenter.heroku.com/articles/heroku-cli][Heroku CLI]] must be installed and user must be logged in to use heroku.el
+* Install
+Using ~use-package~ and ~straight~:
 
-** Installation
-You can use [[https://github.com/jwiegley/use-package][use-package]] and [[https://github.com/raxod502/straight.el][straight.el]] to install:
-
-#+begin_src emacs-lisp
-(use-package heroku
-  :straight (heroku :type git :host github :repo "licht1stein/heroku.el"))
+#+begin_src elisp
+  (use-package heroku
+    :straight (:type git :host github :repo "licht1stein/heroku.el"))
 #+end_src
-** Commands
-All commands can be interactively run from ~M-x~ menu.
 
-- ~heroku-list~
-List all apps CLI has access to. Also updates ~heroku-app-list~ variable used for auto-completion of the app names.
-- ~heroku-logs~
-Open a new buffer and stream logs into it. Allows you to keep a logs buffer open and work with it like with plain emacs buffer, including streaming logs into a file.
-- ~heroku-bash~
-Connect to an app and run bash there.
-- ~heroku-python~
-Connect to an app and run python shell there.
-- ~heroku-restart~
-Restart an app.
-- ~heroku-destroy~
-Permanently destroy an app
-- ~heroku-info~
-Detailed app info
-- ~heroku-rename~
-Rename an app.
-- ~heroku-buildpacks-list~
-List buildpacks for an app.
-- ~heroku-addons~
-List app add-ons.
-- ~heroku-config-list~
-List all environment variables on an app.
-- ~heroku-config-set~
-Set an environment variable on an app.
+* Usage
+Make sure that Heroku CLI is installed and you have logged in using ~heroku login~.
+
+Heroku.el has a single point of entry, called ~heroku-list~:
+
+#+begin_src
+  M-x heroku-list RET
+#+end_src
+
+See demo here:
+
+[demo recording]

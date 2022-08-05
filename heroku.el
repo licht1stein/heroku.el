@@ -35,6 +35,19 @@
        (-sort #'string<)
        (-map #'heroku--extract-app-details)))
 
+(defun heroku-app-destroy (app)
+  (interactive (list (heroku-get-app-name)))
+  (if (yes-or-no-p (format "Are you sure you want to destroy %s? This cannot be undone." (propertize app 'face 'warning)))
+      (let ((confirmed-name (read-from-minibuffer (format "Type the name of the app to continue [%s]: " app))))
+	(if (string= app confirmed-name)
+	    (progn
+	      (with-temp-message (format "Deleteing %s..." app)
+		(->> (format "heroku apps:destroy -a %s --confirm %s" app app)
+		     (shell-command)))
+	      (message "%s destroyed." app)
+	      (heroku-app-list-mode-refresh))
+	  (message "Wrong app name. Cancelled.")))))
+
 (defun heroku-get-app-config (app)
   (interactive)
   (message (format "Getting app config for %s..." app))
@@ -89,6 +102,7 @@
     (define-key map_ (kbd "r") 'heroku-run-transient)
     (define-key map_ (kbd "?") 'heroku-help-transient)
     (define-key map_ (kbd "c") 'heroku-app-config)
+    (define-key map_ (kbd "d") 'heroku-app-destroy)
     map_)
   "Keymap for `heroku-app-list-mode'.")
 
@@ -265,7 +279,8 @@
 		 ""]]
   [["Commands"
     ("g" "Refresh" heroku-app-config-refresh)
-    ("u" "Unset" heroku-app-config-unset)
+    ("c" "Create" heroku-app-config-create)
+    ("d" "Delete (unset)" heroku-app-config-unset)
     ("e" "Edit" heroku-config-edit)]])
 
 (transient-define-prefix heroku-run-transient ()
@@ -294,7 +309,8 @@
     ("g" "Refresh" heroku-app-list-mode-refresh)
     ("c" "Config" heroku-app-config)
     ("l" "Logs" heroku-logs-transient)
-    ("r" "Run" heroku-run-transient)]]
+    ("r" "Run" heroku-run-transient)
+    ("d" "Destroy" heroku-app-destroy)]]
   [["Heroku.el"
     ("?" "Help" heroku-help-transient)
     ("q" "Quit" quit-window)]])
