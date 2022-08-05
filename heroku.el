@@ -26,16 +26,79 @@
 (comment
  (setq heroku-app-list nil))
 
-(define-derived-mode heroku-app-list-mode tabulated-list-mode "Heroku"
+(defun heroku-get-app-list ()
+  "Run heroku apps and parse all apps into a list of strings."
+  (->> (shell-command-to-string "heroku apps -A")
+       (s-split "\n")
+       (-filter (lambda (s) (and (not (s-starts-with-p "===" s)) (s-match heroku-app-name-re s))))
+       (-filter (lambda (s) (not (string= "" s))))
+       (-sort #'string<)
+       (-map #'heroku--extract-app-details)))
+
+(defun heroku-get-app-config (app)
+  (interactive)
+  (message (format "Getting app config for %s..." app))
+  (->> (shell-command-to-string (format "heroku config -a %s" app))
+       (s-split "\n")
+       (-filter (lambda (s) (s-contains-p ":" s)))
+       (-map (lambda (s) (s-split-up-to ":" s 1)))
+       (-map (lambda (el) (list (s-trim (car el)) (s-trim-left (cadr el)))))))
+
+(comment
+ (setq tdata (heroku-get-app-config "ufybot"))
+ (setq gm (alist-get "GMAIL_CREDENTIALS_JSON" tdata nil nil 'string=))
+
+ )
+
+(defun heroku-refresh-app-list ()
+  "Refresh list of app available to Heroku CLI."
+  (interactive)
+  (message "Refreshing Heroku app list...")
+  (setq heroku-app-list (heroku-get-app-list))
+  (message "Heroku app list refreshed"))
+
+(defvar heroku-app-list-mode-map
+  (let* ((map_ (make-sparse-keymap)))
+    (define-key map_ (kbd "g") 'heroku-app-list-mode-refresh)
+    (define-key map_ (kbd "l") 'heroku-logs-transient)
+    (define-key map_ (kbd "r") 'heroku-run-transient)
+    (define-key map_ (kbd "?") 'heroku-help-transient)
+    (define-key map_ (kbd "c") 'heroku-app-config)
+    map_)
+  "Keymap for `heroku-app-list-mode'.")
+
+(define-derived-mode heroku-app-list-mode tabulated-list-mode "Heroku Apps"
   "Heroku app list mode."
+  (unless heroku-app-list
+    (heroku-refresh-app-list))
   (let ((columns [("App" 50) ("Region" 20) ("Collab" 50)])
 	(rows (->> heroku-app-list
+		   (mapcar (lambda (x) `(nil [,@x]))))))
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
+    (tabulated-list-inpit-header)
+    (tabulated-list-print)
+    (hl-line-mode)))
+
+(define-derived-mode heroku-app-config-mode tabulated-list-mode "Heroku App Config"
+  "Heroku app config and details mode."
+  (let ((columns [("Variable" 50) ("Value" 50)])
+	(rows (->> heroku--config-original
 		   (mapcar (lambda (x) `(nil [,@x]))))))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
+
+(defun heroku-app-config (app)
+  "Show environment variables for app."
+  (interactive (list (heroku-get-app-name)))
+  (let ((buff (format "*Heroku Config: %s" app)))
+    (switch-to-buffer buff)
+    (setq heroku--app-name app)
+    (setq heroku--config-original (heroku-get-app-config app))
+    (heroku-app-config-mode)))
 
 (define-derived-mode heroku-logs-mode comint-mode "Heroku Logs"
   (read-only-mode))
@@ -83,12 +146,6 @@
   [["Execute"
     ("l" "display log output" heroku-get-logs)]])
 
-(comment
- (let ((app "app")
-       (command "comm")
-       (args '("--foo" "--bar")))
-   ))
-
 (defun heroku-run-command (command &optional args detached)
   "Run a one-off process inside heroku dyno."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient) nil))
@@ -126,10 +183,10 @@
     ("-nt" "force the command to not run in a tty" "--no-tty")
     ("-t" "process type" "--type=")]]
 
-  [["Run command"
+  [["Run (prompt)"
     ("r" "run" heroku-run-command)
     ("d" "run:detached" heroku-run-detached)]
-   ["Run presets"
+   ["Run command"
     ("b" "bash" heroku-run-bash)
     ("p" "python" heroku-run-python)]])
 
@@ -137,6 +194,7 @@
   [[:description "Heroku.el commands"]]
   [["Commands"
     ("g" "Refresh" heroku-app-list-mode-refresh)
+    ("c" "Config" heroku-app-config)
     ("l" "Logs" heroku-logs-transient)
     ("r" "run" heroku-run-transient)]]
   [["Heroku.el"
@@ -153,61 +211,30 @@
 	(collab (s-match heroku-collab-re s)))
     (-flatten (list name (or region "us") (or collab "private")))))
 
-(defun heroku-get-app-list ()
-  "Run heroku apps and parse all apps into a list of strings."
-  (->> (shell-command-to-string "heroku apps -A")
-       (s-split "\n")
-       (-filter (lambda (s) (and (not (s-starts-with-p "===" s)) (s-match heroku-app-name-re s))))
-       (-filter (lambda (s) (not (string= "" s))))
-       (-sort #'string<)
-       (-map #'heroku--extract-app-details)))
-
-(comment
- (heroku-get-app-list))
-
-(defun heroku-refresh-app-list ()
-  "Refresh list of app available to Heroku CLI."
-  (interactive)
-  (message "Refreshing Heroku app list...")
-  (setq heroku-app-list (heroku-get-app-list))
-  (message "Heroku app list refreshed"))
-
 (defun heroku-app-list-mode-refresh ()
   (interactive)
   (heroku-refresh-app-list)
   (heroku-app-list-mode))
 
-(defvar heroku-app-list-mode-map
-  (let* ((map_ (make-sparse-keymap)))
-    (define-key map_ (kbd "g") 'heroku-app-list-mode-refresh)
-    (define-key map_ (kbd "l") 'heroku-logs-transient)
-    (define-key map_ (kbd "r") 'heroku-run-transient)
-    (define-key map_ (kbd "?") 'heroku-help-transient)
-    map_)
-  "Keympa for `heroku-app-list-mode'.")
 
-(defun heroku ()
+
+;;;###autoload
+(defun heroku-list ()
   "Start heroku.el and choose app to operate on."
   (interactive)
   (let ((buff "*Heroku Apps*"))
     (switch-to-buffer buff)
     (heroku-app-list-mode)))
 
+(provide 'heroku)
+;;; heroku.el ends here
+
+
 
 
 
 
 (comment
-
-
-
-
-
-
-
-
-
-
  (defvar-local heroku-view-title nil)
 
  (defvar heroku-target-process nil "Process to run in heroku run.")
@@ -518,7 +545,7 @@ Useful if your logging system prints it's own timestamp."
    :reader (lambda (prompt _initial-input history)
 	     (setq heroku-target-process (completing-read "Command: " heroku-target-process))))
 
-
+ p
 
 
  (define-infix-command heroku-foo ()
@@ -533,7 +560,3 @@ Useful if your logging system prints it's own timestamp."
              (read-string prompt (when heroku-view-title
                                    (format "%s" heroku-view-title))
                           history))))
-
-
-(provide 'heroku)
-;;; heroku.el ends here
