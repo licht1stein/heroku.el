@@ -87,6 +87,7 @@
   [["Commands"
     ("g" "Refresh" heroku-app-list-mode-refresh)
     ("c" "Config" heroku-app-config)
+    ("y" "Dynos" heroku-dynos-transient)
     ("i" "Info" heroku-app-details)
     ("l" "Logs" heroku-logs-transient)
     ("r" "Run" heroku-run-transient)
@@ -108,6 +109,20 @@
   [["Execute"
     ("R" "promote" heroku-app-promote)]])
 
+(transient-define-prefix heroku-dynos-transient ()
+  "Heroku dynos transient."
+  [[:description "manage dynos"
+		 ""]]
+  [["Options"
+    ("-r" "git remote of app to use" "--reomote=")]]
+  [["Commands"
+    ;; ("k" "Kill" heroku-dynos-kill)
+    ;; ("s" "Resize" heroku-dynos-resize)
+    ("r" "Restart" heroku-dynos-restart)
+    ;; ("c" "Scale" heroku-dynos-scale)
+    ;; ("s" "Stop" heroku-dynos-stop)
+    ]])
+
 ;; === END TRANSIENTS
 
 ;; === KEYBOARD MAPS
@@ -124,6 +139,7 @@
   (let* ((map_ (make-sparse-keymap)))
     (define-key map_ (kbd "RET") 'heroku-help-transient)
     (define-key map_ (kbd "g") 'heroku-app-list-mode-refresh)
+    (define-key map_ (kbd "y") 'heroku-dynos-transient)
     (define-key map_ (kbd "l") 'heroku-logs-transient)
     (define-key map_ (kbd "r") 'heroku-run-transient)
     (define-key map_ (kbd "?") 'heroku-help-transient)
@@ -139,12 +155,13 @@
   (let* ((map_ (make-sparse-keymap)))
     (define-key map_ (kbd "RET") 'heroku-help-transient)
     (define-key map_ (kbd "g") 'heroku-app-list-mode-refresh)
+    (define-key map_ (kbd "d") 'heroku-dynos-transient)
     (define-key map_ (kbd "l") 'heroku-logs-transient)
     (define-key map_ (kbd "r") 'heroku-run-transient)
     (define-key map_ (kbd "?") 'heroku-help-transient)
     (define-key map_ (kbd "c") 'heroku-app-config)
     (define-key map_ (kbd "i") 'heroku-app-details)
-    (define-key map_ (kbd "d") 'heroku-app-destroy)
+    (define-key map_ (kbd "y") 'heroku-app-destroy)
     (define-key map_ (kbd "R") 'heroku-promote-transient)
     map_))
 
@@ -480,6 +497,22 @@ Similar to Clojure's get-in."
   (interactive (list (heroku-get-app-name) (transient-args 'heroku-promote-transient)))
   (with-temp-message (format "Promoting %s..." app)
     (async-shell-command (s-join " " `("heroku pipelines:promote -a" ,app ,@args)))))
+
+(defun heroku-app-command (command app &optional args)
+  "Generic function for running COMMAND on APP wiht TRANSIENT ARGS."
+  (with-temp-message (format "Restarting all dynos on %s..." app)
+    (-> (s-join " " `("heroku" ,command "-a" ,app ,@args))
+	shell-command-to-string)))
+
+(defun heroku-dynos-restart (app &optional args)
+  "Restart APP dynos with ARGS."
+  (interactive (list (heroku-get-app-name) (transient-args 'heroku-dynos-transient)))
+  (heroku-app-command "dyno:restart" app args))
+
+(defun heroku-dynos-kill (app &optional args)
+  "Kill APP dynos with ARGS."
+  (interactive (list (heroku-get-app-name) (transient-args 'heroku-dynos-transient)))
+  (heroku-app-command "dyno:kill" app args))
 
 (defun heroku-run-detached (command &optional args)
   "Run COMMAND with ARGS in detached mode."
