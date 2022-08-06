@@ -6,7 +6,7 @@
 ;; URL: https://github.com./licht1stein/heroku.el
 ;; Keywords: heroku, devops, convenience
 ;; Version: 2.0
-;; Package-Requires: ((emacs "27.2") (transient "0.3.7") (dash "2.19.1") (s "1.12.0"))
+;; Package-Requires: ((emacs "27.2") (transient "0.3.7") (dash "2.19.1") (s "1.12.0") (ts "0.2.2"))
 
 ;;; Commentary:
 ;; Magit inspired Heroku CLI client for Emacs.
@@ -15,6 +15,8 @@
 (require 'transient)
 (require 'dash)
 (require 's)
+(require 'json)
+(require 'ts)
 
 (defvar-local heroku-timestamp-regex "^[[:digit:]]\\{4\\}-[[:digit:]]\\{2\\}-[[:digit:]]\\{2\\}T[[:digit:]:\+\.]*" "Regex pattern of heroku logs standard timestamp.")
 (defvar-local heroku-app-name-re "^[[:alnum:]-]*" "Heroku app name regex.")
@@ -34,15 +36,6 @@
   :group 'heroku
   :type 'list)
 
-(defun heroku-get-app-list ()
-  "Run heroku apps and parse all apps into a list of strings."
-  (->> (shell-command-to-string "heroku apps -A")
-       (s-split "\n")
-       (-filter (lambda (s) (and (not (s-starts-with-p "===" s)) (s-match heroku-app-name-re s))))
-       (-filter (lambda (s) (not (string= "" s))))
-       (-sort #'string<)
-       (-map #'heroku--extract-app-details)))
-
 (defun heroku-get-app-details (app)
   "Run heroku app:details for APP and parse results."
   (interactive (list (heroku-get-app-name)))
@@ -53,7 +46,81 @@
 	   (-map (lambda (s) (s-split-up-to ":" s 1)))
 	   (-map (lambda (el) (list (s-trim-left (car el)) (s-trim-left (cadr el))))))))
 
+(defun heroku--get-in (path js &optional default)
+  "Extract value from hashmpa JS under PATH.
 
+Similar to Clojure's get-in."
+  (or (cond ((eq :null js) nil)
+	    ((eq (length path) 1) (gethash (car path) js))
+	    (t (heroku--get-in (cdr path) (gethash (car path) js))))
+      default))
+
+(comment
+ (heroku--get-in '("team" "name") (car tapps))
+ (heroku--get-in '("owner" "email") (car tapps)))
+
+(defun heroku--app-list-data (js)
+  `(("name" 25 ,(propertize (gethash "name" js) 'face 'transient-value))
+    ("region" 5 ,(heroku--get-in '("region" "name") js "s"))
+    ("owner" 25 ,(heroku--get-in '("owner" "email") js))
+    ("team" 10 ,(heroku--get-in '("team" "name") js "private"))
+    ("org" 10 ,(heroku--get-in '("organization" "name") js "private"))
+    ("maint" 5 ,(if (eq :true (heroku--get-in '("maintenance") js)) "🔴" "" ))
+    ("created" 12 ,(ts-format "%Y-%m-%d" (ts-parse (gethash "created_at" js))))
+    ("updated" 20 ,(ts-format "%Y-%m-%d %H:%M:%S" (ts-parse (gethash "updated_at" js))))))
+
+(defun heroku-alist-get (key al)
+  (alist-get key al nil nil 'string=))
+
+(defun heroku-get-app-list ()
+  (let* ((json-object-type 'hash-table)
+	 (json-array-type 'list)
+	 (json-key-type 'string)
+	 (raw (shell-command-to-string "heroku apps -A --json"))
+	 (json (json-parse-string raw))
+	 (data (-> json (append nil))))
+    (-map #'heroku--app-list-data data)))
+
+(comment
+ (heroku-get-app-list-2)
+ (setq tdata (heroku--app-list-data (car tapps)))
+ (alist-get "name" tdata nil nil 'string=)
+ (hash-table-keys (car tapps))
+ ;; =>
+ ;; ("web_url"
+ ;; "updated_at"
+ ;; "stack"
+ ;; "slug_size"
+ ;; "repo_size"
+ ;; "released_at"
+ ;; "internal_routing"
+ ;; "space"
+ ;; "team"
+ ;; "organization"
+ ;; "region"
+ ;; "owner"
+ ;; "name"
+ ;; "maintenance"
+ ;; "git_url"
+ ;; "id"
+ ;; "created_at"
+ ;; "build_stack"
+ ;; "buildpack_provided_description"
+ ;; "archived_at"
+ ;; "acm")
+ (setq tapps (->> (heroku-get-app-list-2)))
+ (setq intkeys '("name" "team" "owner" "build_stack" "released_at" "updated_at"))
+ (setq tteam (gethash "team" (car tapps)))
+ (heroku-apps-json-get-team (car tapps))
+ (hash-table-keys tteam)
+
+ (setq tkeys
+       (-> tapps
+	   car
+	   hash-table-keys))
+ (->> tapps
+      car
+      (gethash "web_url")))
 
 
 (defun heroku-app-destroy (app)
@@ -115,11 +182,29 @@
 	       (heroku-app-config-refresh)))))
 
 (defun heroku-get-pipelines-list ()
+  "Get list of Heroku pipelines."
   (with-temp-message "Getting Heroku pipelines..."
     (->> (shell-command-to-string "heroku pipelines")
 	 (s-split "\n")
 	 cdr
 	 (-filter #'heroku-some-string-p))))
+
+(defvar heroku-pipelines-mode-map
+  (let* ((map_ (make-sparse-keymap)))
+    (define-key map_ (kbd "a") 'heroku-pipelines-apps)
+    (define-key map_ (kbd "?") 'heroku-pipelines-transient)
+    map_)
+  "Keymap for `heroku-pipelines-mode'.")
+
+(transient-define-prefix heroku-pipelines-transient
+  "Heroku help transient."
+  [[:description "Heroku.el Pipelines"
+		 ""]]
+  [["Commands"
+    ("a" "Apps" heroku-pipelines-apps)]]
+  [["Heroku.el"
+    ("?" "Help" heroku-pipelines-transient)
+    ("q" "Quit" quit-window)]])
 
 (define-derived-mode heroku-pipelines-mode tabulated-list-mode "Heroku Pipelines"
   "Heroku app list mode."
@@ -131,6 +216,16 @@
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
+
+(defun heroku-pipelines-apps (pipeline)
+  (interactive (list (heroku-get-app-name)))
+  (with-temp-message (format "Getting apps for %s..." pipeline)
+    (->> (shell-command-to-string (format "heroku pipelines:info %s" pipeline)))))
+
+(comment
+ (setq heroku-app-list nil)
+ (setq tpp (heroku-pipelines-apps "ufybotmain"))
+ (->> tpp))
 
 (defun heroku-refresh-app-list ()
   "Refresh list of app available to Heroku CLI."
@@ -152,13 +247,27 @@
     map_)
   "Keymap for `heroku-app-list-mode'.")
 
+(comment
+ (setq tdata (heroku-get-app-list-2))
+ (setq cdata (-map (lambda (el) (list (car el) (cadr el))) (car (heroku-get-app-list-2))))
+ (setq tcols (apply 'vector cdata))
+ (setq tlists (heroku-app-list-prepare-columns tdata))
+ (-map (lambda (el) `(nil [,@el])) tlists)
+ )
+
+(defun heroku-app-list-prepare-columns (data)
+  (let ((lists   (-map (lambda (el) (->> (-flatten (-map 'cddr el))
+					 )) data)))
+    (-map (lambda (el) `(nil [,@el])) lists)))
+
 (define-derived-mode heroku-app-list-mode tabulated-list-mode "Heroku Apps"
   "Heroku app list mode."
   (unless heroku-app-list
     (heroku-refresh-app-list))
-  (let ((columns [("App" 50) ("Region" 20) ("Collab" 50)])
-	(rows (->> heroku-app-list
-		   (mapcar (lambda (x) `(nil [,@x]))))))
+  (let* ((data heroku-app-list)
+	 (column-data (-map (lambda (el) (list (car el) (cadr el))) (car data)))
+	 (columns (apply #'vector column-data))
+	 (rows  (heroku-app-list-prepare-columns data)))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
