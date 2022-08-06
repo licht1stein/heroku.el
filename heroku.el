@@ -21,6 +21,14 @@
 (defvar-local heroku-region-re "\(\\([[:alnum:]]*\\)\)" "Heroku region regex.")
 (defvar-local heroku-collab-re "[[:alnum:]]*@[[:alnum:]\.-_]*" "Heroku collaborator regex.")
 
+(defun heroku-some-string-p (s)
+  "Return S if it's some not empty string, else nil."
+  (cond
+   ((eq s nil) nil)
+   ((not (eq 'string (type-of s))) nil)
+   ((string= s "") nil)
+   (t s)))
+
 (defcustom heroku-app-list nil
   "List of apps on Heroku."
   :group 'heroku
@@ -45,12 +53,8 @@
 	   (-map (lambda (s) (s-split-up-to ":" s 1)))
 	   (-map (lambda (el) (list (s-trim-left (car el)) (s-trim-left (cadr el))))))))
 
-(comment
- (setq tdata (heroku-get-app-details "ufybot"))
- (setq tapss (heroku-get-app-list))
- (setq tdet (->> tapss
-		 (-map 'car)
-		 (-map (lambda (app) (list app (heroku-get-app-details app)))))))
+
+
 
 (defun heroku-app-destroy (app)
   "Destroy Heroku APP."
@@ -110,6 +114,24 @@
 	(progn (heroku-app-config-set app key value)
 	       (heroku-app-config-refresh)))))
 
+(defun heroku-get-pipelines-list ()
+  (with-temp-message "Getting Heroku pipelines..."
+    (->> (shell-command-to-string "heroku pipelines")
+	 (s-split "\n")
+	 cdr
+	 (-filter #'heroku-some-string-p))))
+
+(define-derived-mode heroku-pipelines-mode tabulated-list-mode "Heroku Pipelines"
+  "Heroku app list mode."
+  (let ((columns [("My Pipelines" 100)])
+	(rows (->> (heroku-get-pipelines-list)
+		   (mapcar (lambda (x) `(nil [,x]))))))
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
+    (tabulated-list-init-header)
+    (tabulated-list-print)
+    (hl-line-mode)))
+
 (defun heroku-refresh-app-list ()
   "Refresh list of app available to Heroku CLI."
   (interactive)
@@ -126,6 +148,7 @@
     (define-key map_ (kbd "c") 'heroku-app-config)
     (define-key map_ (kbd "i") 'heroku-app-details)
     (define-key map_ (kbd "d") 'heroku-app-destroy)
+    (define-key map_ (kbd "P") 'heroku-pipelines)
     map_)
   "Keymap for `heroku-app-list-mode'.")
 
@@ -354,14 +377,17 @@
 
 (transient-define-prefix heroku-help-transient ()
   "Heroku help transient."
-  [[:description "Heroku.el commands"]]
+  [[:description "Heroku.el commands"
+		 ""]]
   [["Commands"
     ("g" "Refresh" heroku-app-list-mode-refresh)
     ("c" "Config" heroku-app-config)
     ("i" "Info" heroku-app-details)
     ("l" "Logs" heroku-logs-transient)
     ("r" "Run" heroku-run-transient)
-    ("d" "Destroy" heroku-app-destroy)]]
+    ("d" "Destroy" heroku-app-destroy)]
+   ["Other modes"
+    ("P" "Pipelines" heroku-pipelines)]]
   [["Heroku.el"
     ("?" "Help" heroku-help-transient)
     ("q" "Quit" quit-window)]])
@@ -388,6 +414,12 @@
     (setq heroku--app-name-details app)
     (heroku-app-details-mode)))
 
+;;;###autoload
+(defun heroku-pipelines ()
+  (interactive)
+  (let ((buff "*Heroku Pipelines*"))
+    (switch-to-buffer buff)
+    (heroku-pipelines-mode)))
 
 ;;;###autoload
 (defun heroku-list ()
