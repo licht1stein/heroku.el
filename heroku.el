@@ -78,21 +78,26 @@ Similar to Clojure's get-in."
 (defun heroku-alist-get (key al)
   (alist-get key al nil nil 'string=))
 
+(defun heroku--json-vector-to-list (v)
+  (append v nil))
+
 (defun heroku--command-json (command)
+  "Execute COMMAND and parse json."
   (let* ((json-object-type 'hash-table)
 	 (json-array-type 'list)
 	 (json-key-type 'string)
 	 (raw (shell-command-to-string command))
-	 (json (json-parse-string raw))
-	 (data (-> json (append nil))))
-    data))
+	 (json (json-parse-string raw)))
+    (if (eq 'vector (type-of json))
+	(heroku--json-vector-to-list json)
+      json)))
 
 (defun heroku-get-app-list ()
   (->> (heroku--command-json "heroku apps -A --json")
        (-map #'heroku--app-list-data) ))
 
 (comment
- (heroku-get-app-list-2)
+ (heroku-get-app-list)
  (if (eq :false (gethash "acm")) "⨯" "✓")
  (gethash "buildpack_provided_description" (car tapps))
  (gethash "archived_at" (car tapps))
@@ -194,8 +199,6 @@ Similar to Clojure's get-in."
 	(progn (heroku-app-config-set app key value)
 	       (heroku-app-config-refresh)))))
 
-(defmacro heroku-json-table )
-
 (defun heroku--pipelines-list-data (js)
   `(("Name" 25 ,(propertize (gethash "name" js) 'face 'bold))
     ("Owner" 10 ,(or (heroku--get-in '("owner" "type") js)))
@@ -211,6 +214,7 @@ Similar to Clojure's get-in."
 (defvar heroku-pipelines-mode-map
   (let* ((map_ (make-sparse-keymap)))
     (define-key map_ (kbd "a") 'heroku-pipelines-apps)
+    (define-key map_ (kbd "g") 'heroku-pipelines-mode)
     (define-key map_ (kbd "?") 'heroku-pipelines-transient)
     map_)
   "Keymap for `heroku-pipelines-mode'.")
@@ -220,19 +224,75 @@ Similar to Clojure's get-in."
   [[:description "Heroku.el Pipelines"
 		 ""]]
   [["Commands"
+    ("g" "Refresh" heroku-pipelines-mode)
     ("a" "Apps" heroku-pipelines-apps)]]
   [["Heroku.el"
     ("?" "Help" heroku-pipelines-transient)
     ("q" "Quit" quit-window)]])
 
-(defun heroku-pipelines-apps (pipeline)
-  (interactive (list (heroku-get-app-name)))
+(defun heroku--propertize-stage (s)
+  "Propertize stage S."
+  (cond ((string= s "staging") (propertize s 'face 'transient-argument))
+	((string= s "production") (propertize s 'face 'transient-red))
+	(t s)))
+
+(comment
+ (heroku--propertize-stage "foo"))
+
+(defun heroku--pipeline-app-list-data (js)
+  `(("Name" 20 ,(propertize (gethash "name" js) 'face 'bold))
+    ("Stage" 10 ,(heroku--propertize-stage (heroku--get-in '("coupling" "stage") js)))
+    ("Region" 5 ,(heroku--get-in '("region" "name") js "s"))
+    ("Owner" 25 ,(heroku--get-in '("owner" "email") js))
+    ("Team" 10 ,(heroku--get-in '("team" "name") js "-"))
+    ("Org" 10 ,(heroku--get-in '("organization" "name") js "-"))
+    ("Created" 12 ,(ts-format "%Y-%m-%d" (ts-parse (gethash "created_at" js))))
+    ("Updated" 20 ,(ts-format "%Y-%m-%d %H:%M:%S" (ts-parse (gethash "updated_at" js))))
+    ("Stack" 10 ,(heroku--get-in '("stack" "name") js))
+    ("ACM" 5 ,(if (eq :false (gethash "acm" js)) heroku--red-cross heroku--green-check))))
+
+(defun heroku-pipelines-get-apps (pipeline)
   (with-temp-message (format "Getting apps for %s..." pipeline)
-    (->> (shell-command-to-string (format "heroku pipelines:info %s" pipeline)))))
+    (->> (heroku--command-json (format "heroku pipelines:info %s --json" pipeline))
+	 (gethash "apps")
+	 heroku--json-vector-to-list
+	 (-map #'heroku--pipeline-app-list-data))))
+
+
 
 (comment
  (setq heroku-app-list nil)
  (setq tpp (heroku-pipelines-apps "ufybotmain"))
+ (hash-table-keys tpp)
+ (->> (car tpp)
+      (heroku--get-in '("coupling" "stage")))
+ ;; =>
+ ;; ("coupling"
+ ;; "locked"
+ ;; "legacy_id"
+ ;; "joined"
+ ;; "web_url"
+ ;; "updated_at"
+ ;; "stack"
+ ;; "slug_size"
+ ;; "repo_size"
+ ;; "released_at"
+ ;; "internal_routing"
+ ;; "space"
+ ;; "team"
+ ;; "organization"
+ ;; "region"
+ ;; "owner"
+ ;; "name"
+ ;; "maintenance"
+ ;; "git_url"
+ ;; "id"
+ ;; "created_at"
+ ;; "build_stack"
+ ;; "buildpack_provided_description"
+ ;; "archived_at"
+ ;; "acm")
+
  (->> tpp))
 
 (defun heroku-refresh-app-list ()
@@ -255,6 +315,8 @@ Similar to Clojure's get-in."
     map_)
   "Keymap for `heroku-app-list-mode'.")
 
+(defvar heroku-pipelines-apps-mode-map heroku-app-list-mode-map)
+
 (comment
  (setq tdata (heroku-get-app-list-2))
  (setq cdata (-map (lambda (el) (list (car el) (cadr el))) (car (heroku-get-app-list-2))))
@@ -263,13 +325,19 @@ Similar to Clojure's get-in."
  (-map (lambda (el) `(nil [,@el])) tlists)
  )
 
+;;;###autoload
 (defun heroku--prepare-columns (data)
   (->> (-map (lambda (el) (list (car el) (cadr el))) (car data))
        (apply #'vector)))
 
+;;;###autoload
 (defun heroku--prepare-rows (data)
   (let ((lists   (-map (lambda (el) (->> (-flatten (-map 'cddr el)) )) data)))
     (-map (lambda (el) `(nil [,@el])) lists)))
+
+(comment
+ (setq tapps (heroku-get-app-list))
+ (heroku--prepare-columns tapps))
 
 (define-derived-mode heroku-app-list-mode tabulated-list-mode "Heroku Apps"
   "Heroku app list mode."
@@ -277,6 +345,18 @@ Similar to Clojure's get-in."
     (heroku-refresh-app-list))
   (let* ((columns (heroku--prepare-columns heroku-app-list))
 	 (rows (heroku--prepare-rows heroku-app-list)))
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
+    (tabulated-list-init-header)
+    (tabulated-list-print)
+    (hl-line-mode)))
+
+(define-derived-mode heroku-pipelines-apps-mode tabulated-list-mode "Heroku Pipeline Apps"
+  "Heroku app list mode."
+  (let* ((columns (heroku--prepare-columns heroku--pipeline-apps))
+	 (rows (heroku--prepare-rows heroku--pipeline-apps)))
+    (message "Pipeline: %s" heroku--current-pipeline)
+    (message "Apps: %s" heroku--pipeline-apps)
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
@@ -534,6 +614,7 @@ Similar to Clojure's get-in."
   (heroku-refresh-app-list)
   (heroku-app-list-mode))
 
+;;;###autoload
 (defun heroku-app-details ()
   "Start heroku.el and choose app to operate on."
   (interactive)
@@ -544,9 +625,19 @@ Similar to Clojure's get-in."
     (heroku-app-details-mode)))
 
 ;;;###autoload
-(defun heroku-pipelines ()
-  (interactive)
-  (let ((buff "*Heroku Pipelines*"))
+(defun heroku-pipelines-apps (pipeline)
+  (interactive (list (heroku-get-app-name)))
+  (let ((buff (format "*Heroku Pipelines Apps: %s*" pipeline)))
+    (let ((apps (heroku-pipelines-get-apps pipeline)))
+      (switch-to-buffer buff)
+      (setq heroku--current-pipeline pipeline)
+      (setq heroku--pipeline-apps apps)
+      (heroku-pipelines-apps-mode))))
+
+;;;###autoload
+(defun heroku-pipelines (pipeline)
+  (interactive (list (heroku-get-app-name)))
+  (let ((buff (message "*Heroku Pipelines*" pipeline)))
     (switch-to-buffer buff)
     (heroku-pipelines-mode)))
 
