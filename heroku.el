@@ -35,6 +35,23 @@
        (-sort #'string<)
        (-map #'heroku--extract-app-details)))
 
+(defun heroku-get-app-details (app)
+  "Run heroku app:details for APP and parse results."
+  (interactive (list (heroku-get-app-name)))
+  (with-temp-message (format "Getting details for %s..." app)
+    (->>   (shell-command-to-string (format "heroku apps:info -a %s" app))
+	   (s-split "\n")
+	   (-filter (lambda (s) (s-contains-p ":" s)))
+	   (-map (lambda (s) (s-split-up-to ":" s 1)))
+	   (-map (lambda (el) (list (s-trim-left (car el)) (s-trim-left (cadr el))))))))
+
+(comment
+ (setq tdata (heroku-get-app-details "ufybot"))
+ (setq tapss (heroku-get-app-list))
+ (setq tdet (->> tapss
+		 (-map 'car)
+		 (-map (lambda (app) (list app (heroku-get-app-details app)))))))
+
 (defun heroku-app-destroy (app)
   "Destroy Heroku APP."
   (interactive (list (heroku-get-app-name)))
@@ -107,6 +124,7 @@
     (define-key map_ (kbd "r") 'heroku-run-transient)
     (define-key map_ (kbd "?") 'heroku-help-transient)
     (define-key map_ (kbd "c") 'heroku-app-config)
+    (define-key map_ (kbd "i") 'heroku-app-details)
     (define-key map_ (kbd "d") 'heroku-app-destroy)
     map_)
   "Keymap for `heroku-app-list-mode'.")
@@ -138,6 +156,17 @@
   "Heroku app config and details mode."
   (let ((columns [("Variable" 50) ("Value" 50)])
 	(rows (->> heroku--config-original
+		   (mapcar (lambda (x) `(nil [,@x]))))))
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
+    (tabulated-list-init-header)
+    (tabulated-list-print)
+    (hl-line-mode)))
+
+(define-derived-mode heroku-app-details-mode tabulated-list-mode "Heroku App Info"
+  "Heroku app list mode."
+  (let ((columns [("Description" 50) ("Value" 50)])
+	(rows (->> (heroku-get-app-details heroku--app-name-details)
 		   (mapcar (lambda (x) `(nil [,@x]))))))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
@@ -329,6 +358,7 @@
   [["Commands"
     ("g" "Refresh" heroku-app-list-mode-refresh)
     ("c" "Config" heroku-app-config)
+    ("i" "Info" heroku-app-details)
     ("l" "Logs" heroku-logs-transient)
     ("r" "Run" heroku-run-transient)
     ("d" "Destroy" heroku-app-destroy)]]
@@ -349,6 +379,14 @@
   (heroku-refresh-app-list)
   (heroku-app-list-mode))
 
+(defun heroku-app-details ()
+  "Start heroku.el and choose app to operate on."
+  (interactive)
+  (let* ((app (heroku-get-app-name))
+	 (buff (format "*Heroku App Info: %s*" app)))
+    (switch-to-buffer buff)
+    (setq heroku--app-name-details app)
+    (heroku-app-details-mode)))
 
 
 ;;;###autoload
