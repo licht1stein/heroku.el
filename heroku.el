@@ -56,18 +56,24 @@ Similar to Clojure's get-in."
       default))
 
 (comment
+ (setq heroku-app-list nil)
  (heroku--get-in '("team" "name") (car tapps))
  (heroku--get-in '("owner" "email") (car tapps)))
 
+(defvar-local heroku--red-cross (propertize "⨯" 'face 'transient-red))
+(defvar-local heroku--green-check (propertize "✓" 'face 'transient-value))
+
 (defun heroku--app-list-data (js)
-  `(("name" 25 ,(propertize (gethash "name" js) 'face 'transient-value))
-    ("region" 5 ,(heroku--get-in '("region" "name") js "s"))
-    ("owner" 25 ,(heroku--get-in '("owner" "email") js))
-    ("team" 10 ,(heroku--get-in '("team" "name") js "private"))
-    ("org" 10 ,(heroku--get-in '("organization" "name") js "private"))
-    ("maint" 5 ,(if (eq :true (heroku--get-in '("maintenance") js)) "🔴" "" ))
-    ("created" 12 ,(ts-format "%Y-%m-%d" (ts-parse (gethash "created_at" js))))
-    ("updated" 20 ,(ts-format "%Y-%m-%d %H:%M:%S" (ts-parse (gethash "updated_at" js))))))
+  `(("Name" 25 ,(propertize (gethash "name" js) 'face 'bold))
+    ("Region" 5 ,(heroku--get-in '("region" "name") js "s"))
+    ("Owner" 25 ,(heroku--get-in '("owner" "email") js))
+    ("Team" 10 ,(heroku--get-in '("team" "name") js "-"))
+    ("Org" 10 ,(heroku--get-in '("organization" "name") js "-"))
+    ("Maint" 5 ,(if (eq :false (heroku--get-in '("maintenance") js)) "" heroku--red-cross))
+    ("Created" 12 ,(ts-format "%Y-%m-%d" (ts-parse (gethash "created_at" js))))
+    ("Updated" 20 ,(ts-format "%Y-%m-%d %H:%M:%S" (ts-parse (gethash "updated_at" js))))
+    ("Stack" 10 ,(heroku--get-in '("stack" "name") js))
+    ("ACM" 5 ,(if (eq :false (gethash "acm" js)) heroku--red-cross heroku--green-check))))
 
 (defun heroku-alist-get (key al)
   (alist-get key al nil nil 'string=))
@@ -83,6 +89,9 @@ Similar to Clojure's get-in."
 
 (comment
  (heroku-get-app-list-2)
+ (if (eq :false (gethash "acm")) "⨯" "✓")
+ (gethash "buildpack_provided_description" (car tapps))
+ (gethash "archived_at" (car tapps))
  (setq tdata (heroku--app-list-data (car tapps)))
  (alist-get "name" tdata nil nil 'string=)
  (hash-table-keys (car tapps))
