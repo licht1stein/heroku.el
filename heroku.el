@@ -5,7 +5,7 @@
 ;; Author: Mykhaylo Bilyanskyy
 ;; URL: https://github.com./licht1stein/heroku.el
 ;; Keywords: heroku, devops, convenience
-;; Version: 2.0
+;; Version: 1.0.0
 ;; Package-Requires: ((emacs "27.2") (transient "0.3.7") (dash "2.19.1") (s "1.12.0") (ts "0.2.2"))
 
 ;;; Commentary:
@@ -22,6 +22,151 @@
 (defvar-local heroku-app-name-re "^[[:alnum:]-]*" "Heroku app name regex.")
 (defvar-local heroku-region-re "\(\\([[:alnum:]]*\\)\)" "Heroku region regex.")
 (defvar-local heroku-collab-re "[[:alnum:]]*@[[:alnum:]\.-_]*" "Heroku collaborator regex.")
+
+;; === TRANIENTS ===
+(transient-define-prefix heroku-run-transient ()
+  "Heroku run transient."
+  [[:description (lambda () (s-concat "Run a one-off process inside " (heroku-get-app-name-propertized)))
+		 ""]]
+
+  [["Arguments"
+    ("-e" "environment variables to set (use ';' to split multiple vars)" "env=")
+    ("-r" "git remote of app to use" "--remote=")
+    ("-s" "dyno size" "--size=")
+    ("-x" "passthrough the exit code of the remote command" "--exit-code")
+    ("-nn" "disables notification when dyno is up (alternatively use HEROKU_NOTIFICATIONS=0)" "--no-notify")
+    ("-nt" "force the command to not run in a tty" "--no-tty")
+    ("-t" "process type" "--type=")]]
+
+  [["Run (prompt)"
+    ("r" "run" heroku-run-command)
+    ("d" "run:detached" heroku-run-detached)]
+   ["Run command"
+    ("b" "bash" heroku-run-bash)
+    ("p" "python" heroku-run-python)]])
+
+(transient-define-prefix heroku-logs-transient ()
+  "Heroku logs transient."
+  :value (list "--tail")
+  [[:description (lambda () (s-concat "Get logs for " (heroku-get-app-name-propertized)))
+
+		 "\nArguments"
+		 ("-d" "only show output from this dyno type (web, worker)" "--dyno=")
+		 ("-n" "number of lines to display" "--num=")
+		 ("-r" "git remote of app to use" "--remote=")
+		 ("-s" "only show output from this source (app, heroku)" "--source=")
+		 ("-t" "continually stream logs" "--tail")]]
+  [["Execute"
+    ("l" "display log output" heroku-get-logs)]])
+
+(transient-define-prefix heroku-pipelines-transient
+  "Heroku help transient."
+  [[:description "Heroku.el Pipelines"
+		 ""]]
+  [["Commands"
+    ("g" "Refresh" heroku-pipelines-mode)
+    ("a" "Apps" heroku-pipelines-apps)]]
+  [["Heroku.el"
+    ("?" "Help" heroku-pipelines-transient)
+    ("q" "Quit" quit-window)]])
+
+(transient-define-prefix heroku-config-transient ()
+  "Heroku config transient."
+  [[:description (lambda () (s-concat "Config for " heroku--app-name))
+		 ""]]
+  [["Commands"
+    ("g" "Refresh" heroku-app-config-refresh)
+    ("c" "Create" heroku-app-config-create)
+    ("d" "Delete (unset)" heroku-app-config-unset)
+    ("e" "Edit" heroku-config-edit)]])
+
+(transient-define-prefix heroku-help-transient ()
+  "Heroku help transient."
+  [[:description "Heroku.el commands"
+		 ""]]
+  [["Commands"
+    ("g" "Refresh" heroku-app-list-mode-refresh)
+    ("c" "Config" heroku-app-config)
+    ("i" "Info" heroku-app-details)
+    ("l" "Logs" heroku-logs-transient)
+    ("r" "Run" heroku-run-transient)
+    ("d" "Destroy" heroku-app-destroy)
+    ("R" "Promote" heroku-promote-transient)]
+   ["Other modes"
+    ("P" "Pipelines" heroku-pipelines)]]
+  [["Heroku.el"
+    ("?" "Help" heroku-help-transient)
+    ("q" "Quit" quit-window)]])
+
+(transient-define-prefix heroku-promote-transient ()
+  "Heroku promote transient."
+  [[:description "promote the lateste releaste of app to its downstream app(s)"
+		""]]
+  [["Arguments"
+    ("-r" "git remote of app to use" "--remote=")
+    ("-t" "comma separated list of apps to promote to" "--to=")]]
+  [["Execute"
+    ("R" "promote" heroku-app-promote)]])
+
+;; === END TRANSIENTS
+
+;; === KEYBOARD MAPS
+(defvar heroku-pipelines-mode-map
+  (let* ((map_ (make-sparse-keymap)))
+    (define-key map_ (kbd "a") 'heroku-pipelines-apps)
+    (define-key map_ (kbd "g") 'heroku-pipelines-mode)
+    (define-key map_ (kbd "RET") 'heroku-pipelines-transient)
+    (define-key map_ (kbd "?") 'heroku-pipelines-transient)
+    map_)
+  "Keymap for `heroku-pipelines-mode'.")
+
+(defvar heroku-app-list-mode-map
+  (let* ((map_ (make-sparse-keymap)))
+    (define-key map_ (kbd "RET") 'heroku-help-transient)
+    (define-key map_ (kbd "g") 'heroku-app-list-mode-refresh)
+    (define-key map_ (kbd "l") 'heroku-logs-transient)
+    (define-key map_ (kbd "r") 'heroku-run-transient)
+    (define-key map_ (kbd "?") 'heroku-help-transient)
+    (define-key map_ (kbd "c") 'heroku-app-config)
+    (define-key map_ (kbd "i") 'heroku-app-details)
+    (define-key map_ (kbd "d") 'heroku-app-destroy)
+    (define-key map_ (kbd "P") 'heroku-pipelines)
+    (define-key map_ (kbd "R") 'heroku-promote-transient)
+    map_)
+  "Keymap for `heroku-app-list-mode'.")
+
+(defvar heroku-pipelines-apps-mode-map
+  (let* ((map_ (make-sparse-keymap)))
+    (define-key map_ (kbd "RET") 'heroku-help-transient)
+    (define-key map_ (kbd "g") 'heroku-app-list-mode-refresh)
+    (define-key map_ (kbd "l") 'heroku-logs-transient)
+    (define-key map_ (kbd "r") 'heroku-run-transient)
+    (define-key map_ (kbd "?") 'heroku-help-transient)
+    (define-key map_ (kbd "c") 'heroku-app-config)
+    (define-key map_ (kbd "i") 'heroku-app-details)
+    (define-key map_ (kbd "d") 'heroku-app-destroy)
+    (define-key map_ (kbd "R") 'heroku-promote-transient)
+    map_))
+
+(defvar heroku-app-config-mode-map
+  (let* ((map_ (make-sparse-keymap)))
+    (define-key map_ (kbd "?") 'heroku-config-transient)
+    (define-key map_ (kbd "RET") 'heroku-config-transient)
+    (define-key map_ (kbd "e") 'heroku-config-edit)
+    (define-key map_ (kbd "g") 'heroku-app-config-refresh)
+    (define-key map_ (kbd "d") 'heroku-app-config-unset)
+    (define-key map_ (kbd "c") 'heroku-app-config-create)
+    map_)
+  "Keymap for `heroku-app-config-mode'.")
+
+(defvar heroku-env-edit-mode-map
+  (let* ((map_ (make-sparse-keymap)))
+    (define-key map_ (kbd "C-c '") 'heroku-config-edit-save)
+    (define-key map_ (kbd "C-c C-k") 'heroku-config-edit-cancel)
+    map_)
+  "Keymap for `heroku-env-edit-mode'.")
+
+;; === END KEYBOARD MAPS
 
 (defun heroku-some-string-p (s)
   "Return S if it's some not empty string, else nil."
@@ -54,11 +199,6 @@ Similar to Clojure's get-in."
 	    ((eq (length path) 1) (gethash (car path) js))
 	    (t (heroku--get-in (cdr path) (gethash (car path) js))))
       default))
-
-(comment
- (setq heroku-app-list nil)
- (heroku--get-in '("team" "name") (car tapps))
- (heroku--get-in '("owner" "email") (car tapps)))
 
 (defvar-local heroku--red-cross (propertize "⨯" 'face 'transient-red))
 (defvar-local heroku--green-check (propertize "✓" 'face 'transient-value))
@@ -95,51 +235,6 @@ Similar to Clojure's get-in."
 (defun heroku-get-app-list ()
   (->> (heroku--command-json "heroku apps -A --json")
        (-map #'heroku--app-list-data) ))
-
-(comment
- (heroku-get-app-list)
- (if (eq :false (gethash "acm")) "⨯" "✓")
- (gethash "buildpack_provided_description" (car tapps))
- (gethash "archived_at" (car tapps))
- (setq tdata (heroku--app-list-data (car tapps)))
- (alist-get "name" tdata nil nil 'string=)
- (hash-table-keys (car tapps))
- ;; =>
- ;; ("web_url"
- ;; "updated_at"
- ;; "stack"
- ;; "slug_size"
- ;; "repo_size"
- ;; "released_at"
- ;; "internal_routing"
- ;; "space"
- ;; "team"
- ;; "organization"
- ;; "region"
- ;; "owner"
- ;; "name"
- ;; "maintenance"
- ;; "git_url"
- ;; "id"
- ;; "created_at"
- ;; "build_stack"
- ;; "buildpack_provided_description"
- ;; "archived_at"
- ;; "acm")
- (setq tapps (->> (heroku-get-app-list-2)))
- (setq intkeys '("name" "team" "owner" "build_stack" "released_at" "updated_at"))
- (setq tteam (gethash "team" (car tapps)))
- (heroku-apps-json-get-team (car tapps))
- (hash-table-keys tteam)
-
- (setq tkeys
-       (-> tapps
-	   car
-	   hash-table-keys))
- (->> tapps
-      car
-      (gethash "web_url")))
-
 
 (defun heroku-app-destroy (app)
   "Destroy Heroku APP."
@@ -211,33 +306,11 @@ Similar to Clojure's get-in."
     (->> (heroku--command-json "heroku pipelines --json")
 	 (-map #'heroku--pipelines-list-data))))
 
-(defvar heroku-pipelines-mode-map
-  (let* ((map_ (make-sparse-keymap)))
-    (define-key map_ (kbd "a") 'heroku-pipelines-apps)
-    (define-key map_ (kbd "g") 'heroku-pipelines-mode)
-    (define-key map_ (kbd "?") 'heroku-pipelines-transient)
-    map_)
-  "Keymap for `heroku-pipelines-mode'.")
-
-(transient-define-prefix heroku-pipelines-transient
-  "Heroku help transient."
-  [[:description "Heroku.el Pipelines"
-		 ""]]
-  [["Commands"
-    ("g" "Refresh" heroku-pipelines-mode)
-    ("a" "Apps" heroku-pipelines-apps)]]
-  [["Heroku.el"
-    ("?" "Help" heroku-pipelines-transient)
-    ("q" "Quit" quit-window)]])
-
 (defun heroku--propertize-stage (s)
   "Propertize stage S."
   (cond ((string= s "staging") (propertize s 'face 'transient-argument))
 	((string= s "production") (propertize s 'face 'transient-red))
 	(t s)))
-
-(comment
- (heroku--propertize-stage "foo"))
 
 (defun heroku--pipeline-app-list-data (js)
   `(("Name" 20 ,(propertize (gethash "name" js) 'face 'bold))
@@ -258,72 +331,12 @@ Similar to Clojure's get-in."
 	 heroku--json-vector-to-list
 	 (-map #'heroku--pipeline-app-list-data))))
 
-
-
-(comment
- (setq heroku-app-list nil)
- (setq tpp (heroku-pipelines-apps "ufybotmain"))
- (hash-table-keys tpp)
- (->> (car tpp)
-      (heroku--get-in '("coupling" "stage")))
- ;; =>
- ;; ("coupling"
- ;; "locked"
- ;; "legacy_id"
- ;; "joined"
- ;; "web_url"
- ;; "updated_at"
- ;; "stack"
- ;; "slug_size"
- ;; "repo_size"
- ;; "released_at"
- ;; "internal_routing"
- ;; "space"
- ;; "team"
- ;; "organization"
- ;; "region"
- ;; "owner"
- ;; "name"
- ;; "maintenance"
- ;; "git_url"
- ;; "id"
- ;; "created_at"
- ;; "build_stack"
- ;; "buildpack_provided_description"
- ;; "archived_at"
- ;; "acm")
-
- (->> tpp))
-
 (defun heroku-refresh-app-list ()
   "Refresh list of app available to Heroku CLI."
   (interactive)
   (message "Refreshing Heroku app list...")
   (setq heroku-app-list (heroku-get-app-list))
   (message "Heroku app list refreshed"))
-
-(defvar heroku-app-list-mode-map
-  (let* ((map_ (make-sparse-keymap)))
-    (define-key map_ (kbd "g") 'heroku-app-list-mode-refresh)
-    (define-key map_ (kbd "l") 'heroku-logs-transient)
-    (define-key map_ (kbd "r") 'heroku-run-transient)
-    (define-key map_ (kbd "?") 'heroku-help-transient)
-    (define-key map_ (kbd "c") 'heroku-app-config)
-    (define-key map_ (kbd "i") 'heroku-app-details)
-    (define-key map_ (kbd "d") 'heroku-app-destroy)
-    (define-key map_ (kbd "P") 'heroku-pipelines)
-    map_)
-  "Keymap for `heroku-app-list-mode'.")
-
-(defvar heroku-pipelines-apps-mode-map heroku-app-list-mode-map)
-
-(comment
- (setq tdata (heroku-get-app-list-2))
- (setq cdata (-map (lambda (el) (list (car el) (cadr el))) (car (heroku-get-app-list-2))))
- (setq tcols (apply 'vector cdata))
- (setq tlists (heroku-app-list-prepare-columns tdata))
- (-map (lambda (el) `(nil [,@el])) tlists)
- )
 
 ;;;###autoload
 (defun heroku--prepare-columns (data)
@@ -334,10 +347,6 @@ Similar to Clojure's get-in."
 (defun heroku--prepare-rows (data)
   (let ((lists   (-map (lambda (el) (->> (-flatten (-map 'cddr el)) )) data)))
     (-map (lambda (el) `(nil [,@el])) lists)))
-
-(comment
- (setq tapps (heroku-get-app-list))
- (heroku--prepare-columns tapps))
 
 (define-derived-mode heroku-app-list-mode tabulated-list-mode "Heroku Apps"
   "Heroku app list mode."
@@ -355,8 +364,6 @@ Similar to Clojure's get-in."
   "Heroku app list mode."
   (let* ((columns (heroku--prepare-columns heroku--pipeline-apps))
 	 (rows (heroku--prepare-rows heroku--pipeline-apps)))
-    (message "Pipeline: %s" heroku--current-pipeline)
-    (message "Apps: %s" heroku--pipeline-apps)
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
@@ -373,16 +380,6 @@ Similar to Clojure's get-in."
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
-
-(defvar heroku-app-config-mode-map
-  (let* ((map_ (make-sparse-keymap)))
-    (define-key map_ (kbd "?") 'heroku-config-transient)
-    (define-key map_ (kbd "e") 'heroku-config-edit)
-    (define-key map_ (kbd "g") 'heroku-app-config-refresh)
-    (define-key map_ (kbd "d") 'heroku-app-config-unset)
-    (define-key map_ (kbd "c") 'heroku-app-config-create)
-    map_)
-  "Keymap for `heroku-app-config-mode'.")
 
 (define-derived-mode heroku-app-config-mode tabulated-list-mode "Heroku App Config"
   "Heroku app config and details mode."
@@ -459,19 +456,10 @@ Similar to Clojure's get-in."
       (heroku-logs-mode)
       (pop-to-buffer-same-window buffer))))
 
-(transient-define-prefix heroku-logs-transient ()
-  "Heroku logs transient."
-  :value (list "--tail")
-  [[:description (lambda () (s-concat "Get logs for " (heroku-get-app-name-propertized)))
-
-		 "\nArguments"
-		 ("-d" "only show output from this dyno type (web, worker)" "--dyno=")
-		 ("-n" "number of lines to display" "--num=")
-		 ("-r" "git remote of app to use" "--remote=")
-		 ("-s" "only show output from this source (app, heroku)" "--source=")
-		 ("-t" "continually stream logs" "--tail")]]
-  [["Execute"
-    ("l" "display log output" heroku-get-logs)]])
+(defun heroku-app-promote (app &optional args)
+  (interactive (list (heroku-get-app-name) (transient-args 'heroku-promote-transient)))
+  (with-temp-message (format "Promoting %s..." app)
+    (call-process-shell-command "heroku ")))
 
 (defun heroku-run-command (command &optional args detached)
   "Run a one-off process with COMMAND with ARGS in DETACHED mode inside heroku dyno."
@@ -484,6 +472,11 @@ Similar to Clojure's get-in."
       (progn
 	(apply #'make-comint-in-buffer "heroku-run" buffer-name "heroku" nil "run" command "-a" app args)
 	(pop-to-buffer-same-window buffer-name)))))
+
+(defun heroku-app-promote (app &optional args)
+  (interactive (list (heroku-get-app-name) (transient-args 'heroku-promote-transient)))
+  (with-temp-message (format "Promoting %s..." app)
+    (async-shell-command (s-join " " `("heroku pipelines:promote -a" ,app ,@args)))))
 
 (defun heroku-run-detached (command &optional args)
   "Run COMMAND with ARGS in detached mode."
@@ -504,13 +497,6 @@ Similar to Clojure's get-in."
   "Get config key and value from list."
   (list (aref (tabulated-list-get-entry) 0)
 	(aref (tabulated-list-get-entry) 1)))
-
-(defvar heroku-env-edit-mode-map
-  (let* ((map_ (make-sparse-keymap)))
-    (define-key map_ (kbd "C-c '") 'heroku-config-edit-save)
-    (define-key map_ (kbd "C-c C-k") 'heroku-config-edit-cancel)
-    map_)
-  "Keymap for `heroku-env-edit-mode'.")
 
 (defun heroku-config-edit-cancel ()
   "Cancel editing Heroku config."
@@ -553,54 +539,6 @@ Similar to Clojure's get-in."
     (setq heroku--env-old-value value)
     (insert value)))
 
-(transient-define-prefix heroku-config-transient ()
-  "Heroku config transient."
-  [[:description (lambda () (s-concat "Config for " heroku--app-name))
-		 ""]]
-  [["Commands"
-    ("g" "Refresh" heroku-app-config-refresh)
-    ("c" "Create" heroku-app-config-create)
-    ("d" "Delete (unset)" heroku-app-config-unset)
-    ("e" "Edit" heroku-config-edit)]])
-
-(transient-define-prefix heroku-run-transient ()
-  "Heroku run transient."
-  [[:description (lambda () (s-concat "Run a one-off process inside " (heroku-get-app-name-propertized)))
-		 ""]]
-
-  [["Arguments"
-    ("-e" "environment variables to set (use ';' to split multiple vars)" "env=")
-    ("-r" "git remote of app to use" "--remote=")
-    ("-s" "dyno size" "--size=")
-    ("-x" "passthrough the exit code of the remote command" "--exit-code")
-    ("-nn" "disables notification when dyno is up (alternatively use HEROKU_NOTIFICATIONS=0)" "--no-notify")
-    ("-nt" "force the command to not run in a tty" "--no-tty")
-    ("-t" "process type" "--type=")]]
-
-  [["Run (prompt)"
-    ("r" "run" heroku-run-command)
-    ("d" "run:detached" heroku-run-detached)]
-   ["Run command"
-    ("b" "bash" heroku-run-bash)
-    ("p" "python" heroku-run-python)]])
-
-(transient-define-prefix heroku-help-transient ()
-  "Heroku help transient."
-  [[:description "Heroku.el commands"
-		 ""]]
-  [["Commands"
-    ("g" "Refresh" heroku-app-list-mode-refresh)
-    ("c" "Config" heroku-app-config)
-    ("i" "Info" heroku-app-details)
-    ("l" "Logs" heroku-logs-transient)
-    ("r" "Run" heroku-run-transient)
-    ("d" "Destroy" heroku-app-destroy)]
-   ["Other modes"
-    ("P" "Pipelines" heroku-pipelines)]]
-  [["Heroku.el"
-    ("?" "Help" heroku-help-transient)
-    ("q" "Quit" quit-window)]])
-
 (defun heroku--extract-app-details (s)
   "Extract app details from S output of heroku apps."
   (let ((name (s-match heroku-app-name-re s))
@@ -637,7 +575,7 @@ Similar to Clojure's get-in."
 ;;;###autoload
 (defun heroku-pipelines (pipeline)
   (interactive (list (heroku-get-app-name)))
-  (let ((buff (message "*Heroku Pipelines*" pipeline)))
+  (let ((buff (format "*Heroku Pipelines*" pipeline)))
     (switch-to-buffer buff)
     (heroku-pipelines-mode)))
 
