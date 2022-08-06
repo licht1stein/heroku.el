@@ -78,14 +78,18 @@ Similar to Clojure's get-in."
 (defun heroku-alist-get (key al)
   (alist-get key al nil nil 'string=))
 
-(defun heroku-get-app-list ()
+(defun heroku--command-json (command)
   (let* ((json-object-type 'hash-table)
 	 (json-array-type 'list)
 	 (json-key-type 'string)
-	 (raw (shell-command-to-string "heroku apps -A --json"))
+	 (raw (shell-command-to-string command))
 	 (json (json-parse-string raw))
 	 (data (-> json (append nil))))
-    (-map #'heroku--app-list-data data)))
+    data))
+
+(defun heroku-get-app-list ()
+  (->> (heroku--command-json "heroku apps -A --json")
+       (-map #'heroku--app-list-data) ))
 
 (comment
  (heroku-get-app-list-2)
@@ -190,13 +194,19 @@ Similar to Clojure's get-in."
 	(progn (heroku-app-config-set app key value)
 	       (heroku-app-config-refresh)))))
 
+(defmacro heroku-json-table )
+
+(defun heroku--pipelines-list-data (js)
+  `(("Name" 25 ,(propertize (gethash "name" js) 'face 'bold))
+    ("Owner" 10 ,(or (heroku--get-in '("owner" "type") js)))
+    ("Created" 12 ,(ts-format "%Y-%m-%d" (ts-parse (gethash "created_at" js))))
+    ("Updated" 20 ,(ts-format "%Y-%m-%d %H:%M:%S" (ts-parse (gethash "updated_at" js))))))
+
 (defun heroku-get-pipelines-list ()
   "Get list of Heroku pipelines."
   (with-temp-message "Getting Heroku pipelines..."
-    (->> (shell-command-to-string "heroku pipelines")
-	 (s-split "\n")
-	 cdr
-	 (-filter #'heroku-some-string-p))))
+    (->> (heroku--command-json "heroku pipelines --json")
+	 (-map #'heroku--pipelines-list-data))))
 
 (defvar heroku-pipelines-mode-map
   (let* ((map_ (make-sparse-keymap)))
@@ -214,17 +224,6 @@ Similar to Clojure's get-in."
   [["Heroku.el"
     ("?" "Help" heroku-pipelines-transient)
     ("q" "Quit" quit-window)]])
-
-(define-derived-mode heroku-pipelines-mode tabulated-list-mode "Heroku Pipelines"
-  "Heroku app list mode."
-  (let ((columns [("My Pipelines" 100)])
-	(rows (->> (heroku-get-pipelines-list)
-		   (mapcar (lambda (x) `(nil [,x]))))))
-    (setq tabulated-list-format columns)
-    (setq tabulated-list-entries rows)
-    (tabulated-list-init-header)
-    (tabulated-list-print)
-    (hl-line-mode)))
 
 (defun heroku-pipelines-apps (pipeline)
   (interactive (list (heroku-get-app-name)))
@@ -264,19 +263,31 @@ Similar to Clojure's get-in."
  (-map (lambda (el) `(nil [,@el])) tlists)
  )
 
-(defun heroku-app-list-prepare-columns (data)
-  (let ((lists   (-map (lambda (el) (->> (-flatten (-map 'cddr el))
-					 )) data)))
+(defun heroku--prepare-columns (data)
+  (->> (-map (lambda (el) (list (car el) (cadr el))) (car data))
+       (apply #'vector)))
+
+(defun heroku--prepare-rows (data)
+  (let ((lists   (-map (lambda (el) (->> (-flatten (-map 'cddr el)) )) data)))
     (-map (lambda (el) `(nil [,@el])) lists)))
 
 (define-derived-mode heroku-app-list-mode tabulated-list-mode "Heroku Apps"
   "Heroku app list mode."
   (unless heroku-app-list
     (heroku-refresh-app-list))
-  (let* ((data heroku-app-list)
-	 (column-data (-map (lambda (el) (list (car el) (cadr el))) (car data)))
-	 (columns (apply #'vector column-data))
-	 (rows  (heroku-app-list-prepare-columns data)))
+  (let* ((columns (heroku--prepare-columns heroku-app-list))
+	 (rows (heroku--prepare-rows heroku-app-list)))
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
+    (tabulated-list-init-header)
+    (tabulated-list-print)
+    (hl-line-mode)))
+
+(define-derived-mode heroku-pipelines-mode tabulated-list-mode "Heroku Pipelines"
+  "Heroku app list mode."
+  (let* ((data (heroku-get-pipelines-list))
+	 (columns (heroku--prepare-columns data))
+	 (rows (heroku--prepare-rows data)))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
