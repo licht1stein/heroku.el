@@ -204,9 +204,9 @@
   (with-temp-message (format "Getting details for %s..." app)
     (->>   (shell-command-to-string (format "heroku apps:info -a %s" app))
 	   (s-split "\n")
-	   (-filter (lambda (s) (s-contains-p ":" s)))
-	   (-map (lambda (s) (s-split-up-to ":" s 1)))
-	   (-map (lambda (el) (list (s-trim-left (car el)) (s-trim-left (cadr el))))))))
+	   (--filter (s-contains-p ":" it))
+	   (--map (s-split-up-to ":" it 1))
+	   (--map (list (s-trim-left (car it)) (s-trim-left (cadr it)))))))
 
 (defun heroku--get-in (path js &optional default)
   "Extract value from hashmpa JS under PATH.
@@ -277,9 +277,9 @@ Similar to Clojure's get-in."
   (message (format "Getting app config for %s..." app))
   (->> (shell-command-to-string (format "heroku config -a %s" app))
        (s-split "\n")
-       (-filter (lambda (s) (s-contains-p ":" s)))
-       (-map (lambda (s) (s-split-up-to ":" s 1)))
-       (-map (lambda (el) (list (s-trim (car el)) (s-trim-left (cadr el)))))))
+       (--filter (s-contains-p ":" it))
+       (--map (s-split-up-to ":" it 1))
+       (--map (list (s-trim (car it)) (s-trim-left (cadr it))))))
 
 (defun heroku-app-config-set (app key value)
   "In APP set KEY to VALUE."
@@ -364,7 +364,7 @@ Similar to Clojure's get-in."
 
 (defun heroku--prepare-columns (data)
   "Prepare columns from DATA."
-  (->> (-map (lambda (el) (list (car el) (cadr el))) (car data))
+  (->> (--map (list (car it) (cadr it)) (car data))
        (apply #'vector)))
 
 (defun heroku--prepare-rows (data)
