@@ -23,11 +23,11 @@
 (defvar-local heroku-region-re "\(\\([[:alnum:]]*\\)\)" "Heroku region regex.")
 (defvar-local heroku-collab-re "[[:alnum:]]*@[[:alnum:]\.-_]*" "Heroku collaborator regex.")
 
-;; === TRANIENTS ===
+;; === TRANSIENTS ===
 (transient-define-prefix heroku-run-transient ()
   "Heroku run transient."
   [[:description (lambda () (s-concat "Run a one-off process inside " (heroku-get-app-name-propertized)))
-		 ""]]
+		""]]
 
   [["Arguments"
     ("-e" "environment variables to set (use ';' to split multiple vars)" "env=")
@@ -50,19 +50,19 @@
   :value (list "--tail")
   [[:description (lambda () (s-concat "Get logs for " (heroku-get-app-name-propertized)))
 
-		 "\nArguments"
-		 ("-d" "only show output from this dyno type (web, worker)" "--dyno=")
-		 ("-n" "number of lines to display" "--num=")
-		 ("-r" "git remote of app to use" "--remote=")
-		 ("-s" "only show output from this source (app, heroku)" "--source=")
-		 ("-t" "continually stream logs" "--tail")]]
+		"\nArguments"
+		("-d" "only show output from this dyno type (web, worker)" "--dyno=")
+		("-n" "number of lines to display" "--num=")
+		("-r" "git remote of app to use" "--remote=")
+		("-s" "only show output from this source (app, heroku)" "--source=")
+		("-t" "continually stream logs" "--tail")]]
   [["Execute"
     ("l" "display log output" heroku-get-logs)]])
 
 (transient-define-prefix heroku-pipelines-transient
   "Heroku help transient."
   [[:description "Heroku.el Pipelines"
-		 ""]]
+		""]]
   [["Commands"
     ("g" "Refresh" heroku-pipelines-mode)
     ("a" "Apps" heroku-pipelines-apps)]]
@@ -73,7 +73,7 @@
 (transient-define-prefix heroku-config-transient ()
   "Heroku config transient."
   [[:description (lambda () (s-concat "Config for " heroku--app-name))
-		 ""]]
+		""]]
   [["Commands"
     ("g" "Refresh" heroku-app-config-refresh)
     ("c" "Create" heroku-app-config-create)
@@ -83,7 +83,7 @@
 (transient-define-prefix heroku-help-transient ()
   "Heroku help transient."
   [[:description "Heroku.el commands"
-		 ""]]
+		""]]
   [["Commands"
     ("g" "Refresh" heroku-app-list-mode-refresh)
     ("c" "Config" heroku-app-config)
@@ -112,7 +112,7 @@
 (transient-define-prefix heroku-dynos-transient ()
   "Heroku dynos transient."
   [[:description "manage dynos"
-		 ""]]
+		""]]
   [["Options"
     ("-r" "git remote of app to use" "--reomote=")]]
   [["Commands"
@@ -202,19 +202,19 @@
   "Run heroku app:details for APP and parse results."
   (interactive (list (heroku-get-app-name)))
   (with-temp-message (format "Getting details for %s..." app)
-    (->>   (shell-command-to-string (format "heroku apps:info -a %s" app))
-	   (s-split "\n")
-	   (--filter (s-contains-p ":" it))
-	   (--map (s-split-up-to ":" it 1))
-	   (--map (list (s-trim-left (car it)) (s-trim-left (cadr it)))))))
+    (->> (shell-command-to-string (format "heroku apps:info -a %s" app))
+	       (s-split "\n")
+	       (--filter (s-contains-p ":" it))
+	       (--map (s-split-up-to ":" it 1))
+	       (--map (list (s-trim-left (car it)) (s-trim-left (cadr it)))))))
 
 (defun heroku--get-in (path js &optional default)
   "Extract value from hashmpa JS under PATH.
 
 Similar to Clojure's get-in."
   (or (cond ((eq :null js) nil)
-	    ((eq (length path) 1) (gethash (car path) js))
-	    (t (heroku--get-in (cdr path) (gethash (car path) js))))
+	          ((eq (length path) 1) (gethash (car path) js))
+	          (t (heroku--get-in (cdr path) (gethash (car path) js))))
       default))
 
 (defvar-local heroku--red-cross (propertize "⨯" 'face 'transient-red))
@@ -244,12 +244,12 @@ Similar to Clojure's get-in."
 (defun heroku--command-json (command)
   "Execute COMMAND and parse json."
   (let* ((json-object-type 'hash-table)
-	 (json-array-type 'list)
-	 (json-key-type 'string)
-	 (raw (shell-command-to-string command))
-	 (json (json-parse-string raw)))
+	       (json-array-type 'list)
+	       (json-key-type 'string)
+	       (raw (shell-command-to-string command))
+	       (json (json-parse-string raw)))
     (if (eq 'vector (type-of json))
-	(heroku--json-vector-to-list json)
+	      (heroku--json-vector-to-list json)
       json)))
 
 (defun heroku-get-app-list ()
@@ -262,14 +262,14 @@ Similar to Clojure's get-in."
   (interactive (list (heroku-get-app-name)))
   (if (yes-or-no-p (format "Are you sure you want to destroy %s?" (propertize app 'face 'warning)))
       (let ((confirmed-name (read-from-minibuffer (format "Type the name of the app to continue [%s]: " app))))
-	(if (string= app confirmed-name)
-	    (progn
-	      (with-temp-message (format "Deleteing %s..." app)
-		(->> (format "heroku apps:destroy -a %s --confirm %s" app app)
-		     (shell-command)))
-	      (message "%s destroyed." app)
-	      (heroku-app-list-mode-refresh))
-	  (message "Wrong app name. Cancelled.")))))
+	      (if (string= app confirmed-name)
+	          (progn
+	            (with-temp-message (format "Deleteing %s..." app)
+		            (->> (format "heroku apps:destroy -a %s --confirm %s" app app)
+		                 (shell-command)))
+	            (message "%s destroyed." app)
+	            (heroku-app-list-mode-refresh))
+	        (message "Wrong app name. Cancelled.")))))
 
 (defun heroku-get-app-config (app)
   "Get config for the APP."
@@ -285,9 +285,9 @@ Similar to Clojure's get-in."
   "In APP set KEY to VALUE."
   (message "Setting %s on %s..." key app)
   (let* ((result (->> (format "heroku config:set %s=%s -a %s" key value app)
-		      call-process-shell-command)))
+		                  call-process-shell-command)))
     (if (eq result 0)
-	(message "%s" "Done.")
+	      (message "%s" "Done.")
       (message "Something went wrong."))))
 
 (defun heroku-app-config-unset (app key)
@@ -295,25 +295,25 @@ Similar to Clojure's get-in."
   (interactive (list heroku--app-name (car (heroku-get-config-kv))))
   (if (y-or-n-p (format "Are you sure you want to delete %s on %s?" key app))
       (progn
-	(with-temp-message (format "Unsetting %s..." key)
-	  (->> (format "heroku config:unset %s -a %s" key app)
-	       call-process-shell-command))
-	(heroku-app-config-refresh)
-	(message "Done. App will restart."))))
+	      (with-temp-message (format "Unsetting %s..." key)
+	        (->> (format "heroku config:unset %s -a %s" key app)
+	             call-process-shell-command))
+	      (heroku-app-config-refresh)
+	      (message "Done. App will restart."))))
 
 (defun heroku-app-config-create (app key value)
   "Create config KEY with VALUE in APP."
   (interactive (list heroku--app-name (read-from-minibuffer "New key: ") (read-from-minibuffer "Value: ")))
   (if (alist-get key heroku--config-original nil nil 'string=)
       (progn
-	(if (y-or-n-p (format "Key %s already exists.  Edit it instead?" key))
-	    (progn
-	      (heroku-config-edit)
-	      (erase-buffer)
-	      (insert value))))
+	      (if (y-or-n-p (format "Key %s already exists.  Edit it instead?" key))
+	          (progn
+	            (heroku-config-edit)
+	            (erase-buffer)
+	            (insert value))))
     (if (y-or-n-p (format "Create %s=%s on %s?" key value app))
-	(progn (heroku-app-config-set app key value)
-	       (heroku-app-config-refresh)))))
+	      (progn (heroku-app-config-set app key value)
+	             (heroku-app-config-refresh)))))
 
 (defun heroku--pipelines-list-data (js)
   "Prepare pipelines data JS for print."
@@ -326,13 +326,13 @@ Similar to Clojure's get-in."
   "Get list of Heroku pipelines."
   (with-temp-message "Getting Heroku pipelines..."
     (->> (heroku--command-json "heroku pipelines --json")
-	 (-map #'heroku--pipelines-list-data))))
+	       (-map #'heroku--pipelines-list-data))))
 
 (defun heroku--propertize-stage (s)
   "Propertize stage S."
   (cond ((string= s "staging") (propertize s 'face 'transient-argument))
-	((string= s "production") (propertize s 'face 'transient-red))
-	(t s)))
+	      ((string= s "production") (propertize s 'face 'transient-red))
+	      (t s)))
 
 (defun heroku--pipeline-app-list-data (js)
   "Prepare pipelines app list data JS for print."
@@ -351,9 +351,9 @@ Similar to Clojure's get-in."
   "Get all PIPELINE apps."
   (with-temp-message (format "Getting apps for %s..." pipeline)
     (->> (heroku--command-json (format "heroku pipelines:info %s --json" pipeline))
-	 (gethash "apps")
-	 heroku--json-vector-to-list
-	 (-map #'heroku--pipeline-app-list-data))))
+	       (gethash "apps")
+	       heroku--json-vector-to-list
+	       (-map #'heroku--pipeline-app-list-data))))
 
 (defun heroku-refresh-app-list ()
   "Refresh list of app available to Heroku CLI."
@@ -377,7 +377,7 @@ Similar to Clojure's get-in."
   (unless heroku-app-list
     (heroku-refresh-app-list))
   (let* ((columns (heroku--prepare-columns heroku-app-list))
-	 (rows (heroku--prepare-rows heroku-app-list)))
+	       (rows (heroku--prepare-rows heroku-app-list)))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
@@ -387,7 +387,7 @@ Similar to Clojure's get-in."
 (define-derived-mode heroku-pipelines-apps-mode tabulated-list-mode "Heroku Pipeline Apps"
   "Heroku app list mode."
   (let* ((columns (heroku--prepare-columns heroku--pipeline-apps))
-	 (rows (heroku--prepare-rows heroku--pipeline-apps)))
+	       (rows (heroku--prepare-rows heroku--pipeline-apps)))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
@@ -397,8 +397,8 @@ Similar to Clojure's get-in."
 (define-derived-mode heroku-pipelines-mode tabulated-list-mode "Heroku Pipelines"
   "Heroku app list mode."
   (let* ((data (heroku-get-pipelines-list))
-	 (columns (heroku--prepare-columns data))
-	 (rows (heroku--prepare-rows data)))
+	       (columns (heroku--prepare-columns data))
+	       (rows (heroku--prepare-rows data)))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
@@ -408,8 +408,8 @@ Similar to Clojure's get-in."
 (define-derived-mode heroku-app-config-mode tabulated-list-mode "Heroku App Config"
   "Heroku app config and details mode."
   (let ((columns [("Variable" 50) ("Value" 50)])
-	(rows (->> heroku--config-original
-		   (mapcar (lambda (x) `(nil [,@x]))))))
+	      (rows (->> heroku--config-original
+		               (mapcar (lambda (x) `(nil [,@x]))))))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
@@ -419,8 +419,8 @@ Similar to Clojure's get-in."
 (define-derived-mode heroku-app-details-mode tabulated-list-mode "Heroku App Info"
   "Heroku app list mode."
   (let ((columns [("Description" 50) ("Value" 50)])
-	(rows (->> (heroku-get-app-details heroku--app-name-details)
-		   (mapcar (lambda (x) `(nil [,@x]))))))
+	      (rows (->> (heroku-get-app-details heroku--app-name-details)
+		               (mapcar (lambda (x) `(nil [,@x]))))))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
@@ -454,10 +454,10 @@ Similar to Clojure's get-in."
       (".*ERROR.*" . 'transient-amaranth)
       (".*CRITICAL.*" . 'transient-red)
       (,heroku-timestamp-regex 0 (progn
-				   (if heroku-logs-hide-timestamp-prefix
-				       (add-text-properties (match-beginning 0)
-							    (match-end 0)
-							    '(invisible t)))))))
+				                           (if heroku-logs-hide-timestamp-prefix
+				                               (add-text-properties (match-beginning 0)
+							                          (match-end 0)
+							                          '(invisible t)))))))
 
 (font-lock-add-keywords 'heroku-logs-mode heroku--logs-font-rules)
 
@@ -473,7 +473,7 @@ Similar to Clojure's get-in."
   "Get Heroku logs for app using ARGS."
   (interactive (list (transient-args 'heroku-logs-transient)))
   (let* ((app (heroku-get-app-name))
-	 (buffer (format "*Heroku Logs: %s*" app)))
+	       (buffer (format "*Heroku Logs: %s*" app)))
     (message (format "Gettings Heroku logs for %s..." app))
     (apply #'make-comint-in-buffer "heroku-logs" buffer "heroku" nil "logs" "-a" app args)
     (with-current-buffer buffer
@@ -484,13 +484,13 @@ Similar to Clojure's get-in."
   "Run a one-off process with COMMAND with ARGS in DETACHED mode inside heroku dyno."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient) nil))
   (let* ((app (heroku-get-app-name))
-	 (buffer-name (format "*Heroku Run: %s" app)))
+	       (buffer-name (format "*Heroku Run: %s" app)))
     (message (format "Running %s on %s..." command app))
     (if detached
-	(async-shell-command (s-join " " `("heroku run:detached -a" ,app ,command ,@args)))
+	      (async-shell-command (s-join " " `("heroku run:detached -a" ,app ,command ,@args)))
       (progn
-	(apply #'make-comint-in-buffer "heroku-run" buffer-name "heroku" nil "run" command "-a" app args)
-	(pop-to-buffer-same-window buffer-name)))))
+	      (apply #'make-comint-in-buffer "heroku-run" buffer-name "heroku" nil "run" command "-a" app args)
+	      (pop-to-buffer-same-window buffer-name)))))
 
 (defun heroku-app-promote (app &optional args)
   "Run pipelines:promote on APP with ARGS."
@@ -502,7 +502,7 @@ Similar to Clojure's get-in."
   "Generic function for running COMMAND on APP wiht TRANSIENT ARGS."
   (with-temp-message (format "Restarting all dynos on %s..." app)
     (-> (s-join " " `("heroku" ,command "-a" ,app ,@args))
-	shell-command-to-string)))
+	      shell-command-to-string)))
 
 (defun heroku-dynos-restart (app &optional args)
   "Restart APP dynos with ARGS."
@@ -532,7 +532,7 @@ Similar to Clojure's get-in."
 (defun heroku-get-config-kv ()
   "Get config key and value from list."
   (list (aref (tabulated-list-get-entry) 0)
-	(aref (tabulated-list-get-entry) 1)))
+	      (aref (tabulated-list-get-entry) 1)))
 
 (defun heroku-config-edit-cancel ()
   "Cancel editing Heroku config."
@@ -545,14 +545,14 @@ Similar to Clojure's get-in."
   (interactive)
   (let ((new-value (s-trim (buffer-substring-no-properties (point-min) (point-max)))))
     (if (string= new-value heroku--env-old-value)
-	(progn
-	  (message "Value has not changed. If you want to abort press C-c C-k"))
+	      (progn
+	        (message "Value has not changed. If you want to abort press C-c C-k"))
       (if (y-or-n-p "Do you want to save changes to Heroku?")
-	  (progn (message "Saving to Heroku...")
-		 (heroku-app-config-set heroku--app-name heroku--env-key new-value)
-		 (message (s-concat heroku--env-key " " new-value))
-		 (heroku-config-edit-cancel)
-		 (heroku-app-config-refresh))))))
+	        (progn (message "Saving to Heroku...")
+		             (heroku-app-config-set heroku--app-name heroku--env-key new-value)
+		             (message (s-concat heroku--env-key " " new-value))
+		             (heroku-config-edit-cancel)
+		             (heroku-app-config-refresh))))))
 
 (define-derived-mode heroku-env-edit-mode fundamental-mode "Heroku Edit Env"
   (defvar-local heroku--env-key nil)
@@ -563,10 +563,10 @@ Similar to Clojure's get-in."
   "Edit Heroku config."
   (interactive)
   (let* ((kv (heroku-get-config-kv))
-	 (key (car kv))
-	 (value (cadr kv))
-	 (win (split-window-below))
-	 (buff (format "*heroku-edit")))
+	       (key (car kv))
+	       (value (cadr kv))
+	       (win (split-window-below))
+	       (buff (format "*heroku-edit")))
     (message (format "Editing environment variable %s..." key))
     (select-window win)
     (switch-to-buffer (get-buffer-create buff))
@@ -578,8 +578,8 @@ Similar to Clojure's get-in."
 (defun heroku--extract-app-details (s)
   "Extract app details from S output of heroku apps."
   (let ((name (s-match heroku-app-name-re s))
-	(region (cdr (s-match heroku-region-re s)))
-	(collab (s-match heroku-collab-re s)))
+	      (region (cdr (s-match heroku-region-re s)))
+	      (collab (s-match heroku-collab-re s)))
     (-flatten (list name (or region "us") (or collab "private")))))
 
 (defun heroku-app-list-mode-refresh ()
@@ -592,7 +592,7 @@ Similar to Clojure's get-in."
   "Start heroku.el and choose app to operate on."
   (interactive)
   (let* ((app (heroku-get-app-name))
-	 (buff (format "*Heroku App Info: %s*" app)))
+	       (buff (format "*Heroku App Info: %s*" app)))
     (switch-to-buffer buff)
     (setq heroku--app-name-details app)
     (heroku-app-details-mode)))
