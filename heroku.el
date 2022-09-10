@@ -241,12 +241,26 @@ Similar to Clojure's get-in."
   "Convert vector V to list."
   (append v nil))
 
+(defun heroku--login ()
+  "Open browser to login to Heroku."
+  (let ((buff (get-buffer-create "*heroku-login*")))
+    (switch-to-buffer-other-window buff)
+    (apply #'make-comint-in-buffer "heroku-login" buff "heroku" nil '("login"))
+    (funcall (lookup-key (current-local-map) (kbd "RET")))))
+
+(defun assert-login (s)
+  "Check S output of heroku command for logged out state and offer to login."
+  (if (s-contains-p "Press any key to open up the browser to login or q to exit" s)
+      (if (y-or-n-p "You are logged out of Heroku. Open browser to login?")
+          (heroku--login))))
+
 (defun heroku--command-json (command)
   "Execute COMMAND and parse json."
   (let* ((json-object-type 'hash-table)
 	       (json-array-type 'list)
 	       (json-key-type 'string)
 	       (raw (shell-command-to-string command))
+         (_ (assert-login raw))
 	       (json (json-parse-string raw)))
     (if (eq 'vector (type-of json))
 	      (heroku--json-vector-to-list json)
