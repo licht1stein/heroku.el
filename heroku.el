@@ -266,7 +266,7 @@ Similar to Clojure's get-in."
 (defun heroku--parse-json (output)
   "Remove invalid characters from JSON output."
   (->> output
-       filter-warning-lines
+       heroku--filter-warning-lines
        json-parse-string))
 
 (defun heroku--command-json (command)
