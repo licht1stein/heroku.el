@@ -59,7 +59,7 @@
   [["Execute"
     ("l" "display log output" heroku-get-logs)]])
 
-(transient-define-prefix heroku-pipelines-transient
+(transient-define-prefix heroku-pipelines-transient ()
   "Heroku help transient."
   [[:description "Heroku.el Pipelines"
 		""]]
