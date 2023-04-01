@@ -17,6 +17,7 @@
 (require 's)
 (require 'json)
 (require 'ts)
+(require 'subr-x)
 
 (defvar-local heroku-timestamp-regex "^[[:digit:]]\\{4\\}-[[:digit:]]\\{2\\}-[[:digit:]]\\{2\\}T[[:digit:]:\+\.]*" "Regex pattern of heroku logs standard timestamp.")
 (defvar-local heroku-app-name-re "^[[:alnum:]-]*" "Heroku app name regex.")
@@ -254,6 +255,20 @@ Similar to Clojure's get-in."
       (if (y-or-n-p "You are logged out of Heroku. Open browser to login?")
           (heroku--login))))
 
+(defun heroku--filter-warning-lines (output)
+  "Remove lines starting with '›' from the output string."
+  (let* ((lines (s-lines output))
+         (filtered-lines (-filter (lambda (line)
+                                    (not (s-starts-with? "›" (s-trim line))))
+                                  lines)))
+    (s-join "\n" filtered-lines)))
+
+(defun heroku--parse-json (output)
+  "Remove invalid characters from JSON output."
+  (->> output
+       filter-warning-lines
+       json-parse-string))
+
 (defun heroku--command-json (command)
   "Execute COMMAND and parse json."
   (let* ((json-object-type 'hash-table)
@@ -261,7 +276,7 @@ Similar to Clojure's get-in."
 	       (json-key-type 'string)
 	       (raw (shell-command-to-string command))
          (_ (assert-login raw))
-	       (json (json-parse-string raw)))
+	       (json (heroku--parse-json raw)))
     (if (eq 'vector (type-of json))
 	      (heroku--json-vector-to-list json)
       json)))
@@ -270,6 +285,7 @@ Similar to Clojure's get-in."
   "Get full app list data."
   (->> (heroku--command-json "heroku apps -A --json")
        (-map #'heroku--app-list-data) ))
+
 
 (defun heroku-app-destroy (app)
   "Destroy Heroku APP."
