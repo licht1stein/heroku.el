@@ -1,4 +1,4 @@
-;;; heroku.el --- Heroku CLI similar to Magit  -*- coding: utf-8; lexical-binding: t; -*-
+;;; heroku.el --- Heroku apps management iterface   -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Copyright (c) 2022 Mykhaylo Bilyanskyy <mb@blaster.ai>
 
@@ -6,10 +6,12 @@
 ;; URL: https://github.com./licht1stein/heroku.el
 ;; Keywords: heroku, devops, convenience
 ;; Version: 1.0.0
-;; Package-Requires: ((emacs "27.2") (transient "0.3.7") (dash "2.19.1") (s "1.12.0") (ts "0.2.2"))
+;; Package-Requires: ((emacs "27.2") (transient "0.3.7") (dash "2.19.1") (s "1.13.0") (ts "0.2.2"))
 
 ;;; Commentary:
-;; Magit inspired Heroku CLI client for Emacs.
+;; Heroku client for Emacs. It allows you to manage your Heroku
+;; apps right from within Emacs: view and tail logs, edit environment variables,
+;; restart and destroy dynos etc. Requires Heroku CLI to be installed.
 
 ;;; Code:
 (require 'transient)
@@ -23,6 +25,24 @@
 (defvar-local heroku-app-name-re "^[[:alnum:]-]*" "Heroku app name regex.")
 (defvar-local heroku-region-re "\(\\([[:alnum:]]*\\)\)" "Heroku region regex.")
 (defvar-local heroku-collab-re "[[:alnum:]]*@[[:alnum:]\.-_]*" "Heroku collaborator regex.")
+
+(defcustom heroku-app-list nil
+  "List of apps on Heroku."
+  :group 'heroku
+  :type 'list)
+
+(defvar heroku--current-pipeline nil
+  "Currently selected Heroku pipeline.")
+
+(defvar heroku--pipeline-apps nil
+  "Apps in the current selected Heroku pipeline.")
+
+(defvar heroku--tabulated-list-format nil)
+(defvar heroku--tabulated-list-entries nil)
+(defvar heroku--app-name nil)
+(defvar heroku--config-original nil)
+(defvar heroku--app-name-details nil)
+
 
 ;; === TRANSIENTS ===
 (transient-define-prefix heroku-run-transient ()
@@ -194,11 +214,6 @@
    ((string= s "") nil)
    (t s)))
 
-(defcustom heroku-app-list nil
-  "List of apps on Heroku."
-  :group 'heroku
-  :type 'list)
-
 (defun heroku-get-app-details (app)
   "Run heroku app:details for APP and parse results."
   (interactive (list (heroku-get-app-name)))
@@ -249,7 +264,7 @@ Similar to Clojure's get-in."
     (apply #'make-comint-in-buffer "heroku-login" buff "heroku" nil '("login"))
     (funcall (lookup-key (current-local-map) (kbd "RET")))))
 
-(defun assert-login (s)
+(defun heroku-assert-login (s)
   "Check S output of heroku command for logged out state and offer to login."
   (if (s-contains-p "Press any key to open up the browser to login or q to exit" s)
       (if (y-or-n-p "You are logged out of Heroku. Open browser to login?")
@@ -275,7 +290,7 @@ Similar to Clojure's get-in."
 	       (json-array-type 'list)
 	       (json-key-type 'string)
 	       (raw (shell-command-to-string command))
-         (_ (assert-login raw))
+         (_ (heroku-assert-login raw))
 	       (json (heroku--parse-json raw)))
     (if (eq 'vector (type-of json))
 	      (heroku--json-vector-to-list json)
@@ -408,8 +423,8 @@ Similar to Clojure's get-in."
     (heroku-refresh-app-list))
   (let* ((columns (heroku--prepare-columns heroku-app-list))
 	       (rows (heroku--prepare-rows heroku-app-list)))
-    (setq tabulated-list-format columns)
-    (setq tabulated-list-entries rows)
+    (setq heroku--tabulated-list-format columns)
+    (setq heroku--tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
@@ -418,8 +433,8 @@ Similar to Clojure's get-in."
   "Heroku app list mode."
   (let* ((columns (heroku--prepare-columns heroku--pipeline-apps))
 	       (rows (heroku--prepare-rows heroku--pipeline-apps)))
-    (setq tabulated-list-format columns)
-    (setq tabulated-list-entries rows)
+    (setq heroku--tabulated-list-format columns)
+    (setq heroku--tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
@@ -429,8 +444,8 @@ Similar to Clojure's get-in."
   (let* ((data (heroku-get-pipelines-list))
 	       (columns (heroku--prepare-columns data))
 	       (rows (heroku--prepare-rows data)))
-    (setq tabulated-list-format columns)
-    (setq tabulated-list-entries rows)
+    (setq heroku--tabulated-list-format columns)
+    (setq heroku--tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
@@ -440,8 +455,8 @@ Similar to Clojure's get-in."
   (let ((columns [("Variable" 50) ("Value" 50)])
 	      (rows (->> heroku--config-original
 		               (mapcar (lambda (x) `(nil [,@x]))))))
-    (setq tabulated-list-format columns)
-    (setq tabulated-list-entries rows)
+    (setq heroku--tabulated-list-format columns)
+    (setq heroku--tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
@@ -451,8 +466,8 @@ Similar to Clojure's get-in."
   (let ((columns [("Description" 50) ("Value" 50)])
 	      (rows (->> (heroku-get-app-details heroku--app-name-details)
 		               (mapcar (lambda (x) `(nil [,@x]))))))
-    (setq tabulated-list-format columns)
-    (setq tabulated-list-entries rows)
+    (setq heroku--tabulated-list-format columns)
+    (setq heroku--tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
