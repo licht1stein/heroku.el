@@ -531,7 +531,7 @@ Similar to Clojure's get-in."
       (pop-to-buffer-same-window buffer))))
 
 (defun heroku-run-command (command &optional args detached)
-  "Run a one-off process with COMMAND with ARGS in DETACHED mode inside heroku dyno."
+  "Run a one-off process with COMMAND with ARGS in DETACHED mode in heroku dyno."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient) nil))
   (let* ((app (heroku-get-app-name))
 	       (buffer-name (format "*Heroku Run: %s" app)))
