@@ -46,7 +46,7 @@ Press ~yr~ to quickly restart a dyno.
 * More Screenshots
 ** App list
 :PROPERTIES:
-:CUSTOM_ID: app-list-screenshot
+:CUSTOM_ID: app-list
 :END:
 Main interface, that allows you to choose an app and perform actions on it.
 
