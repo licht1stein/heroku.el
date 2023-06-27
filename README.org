@@ -19,7 +19,7 @@ Heroku.el has a single point of entry, called ~heroku-list~:
   M-x heroku-list RET
 #+end_src
 
-This opens up a list with all apps that you have access to, and you can start managing them right away (see [[#app-list-screenshot ][screenshot]])
+This opens up a list with all apps that you have access to, and you can start managing them right away (see  [[#app-list][screenshot]])
 
 ** My favorite use cases
 I have been using this package for almost two years without releasing it, and I rarely if ever need to open heroku's web interface or run CLI commands. The most useful actions that I use all the time:
