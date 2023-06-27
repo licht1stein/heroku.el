@@ -1,4 +1,4 @@
-;;; heroku.el --- Heroku apps management iterface   -*- coding: utf-8; lexical-binding: t; -*-
+;;; heroku.el --- Like Magit by for Heroku CLI   -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Copyright (c) 2022 Mykhaylo Bilyanskyy <mb@blaster.ai>
 
