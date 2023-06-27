@@ -27,4 +27,4 @@ Heroku.el has a single point of entry, called ~heroku-list~:
 [[file:./img/app-commands.png]]
 
 ** Environment Variables
-[[file:./img/]]config.png
+[[file:./img/config.png]]
