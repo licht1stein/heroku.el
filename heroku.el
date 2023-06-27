@@ -9,12 +9,13 @@
 ;; Package-Requires: ((emacs "27.2") (transient "0.3.7") (dash "2.19.1") (s "1.13.0") (ts "0.2.2"))
 
 ;;; Commentary:
-;; Heroku client for Emacs. It allows you to manage your Heroku
-;; apps right from within Emacs: view and tail logs, edit environment variables,
-;; restart and destroy dynos etc. Requires Heroku CLI to be installed.
+;; Heroku client for Emacs, quick and efficient like Magit (thanks for the transient)!
+;; It allows you to manage your Heroku apps right from within Emacs: view and tail
+;; logs, edit environment variables, restart and destroy dynos etc.
 ;;
 ;; Main entry point is `heroku-list', once it's open press `?' to see available
-;; commands.
+;;
+;; Requires Heroku CLI to be installed.
 
 ;;; Code:
 (require 'transient)
