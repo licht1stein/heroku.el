@@ -1,6 +1,6 @@
 ;;; heroku.el --- Like Magit but for Heroku CLI   -*- coding: utf-8; lexical-binding: t; -*-
 
-;; Copyright (c) 2022 Mykhaylo Bilyanskyy <mb@blaster.ai>
+;; Copyright (c) 2022 Mykhaylo Bilyanskyy <mb@m1k.pw>
 
 ;; Author: Mykhaylo Bilyanskyy
 ;; URL: https://github.com./licht1stein/heroku.el
