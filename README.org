@@ -11,7 +11,7 @@ Using ~use-package~ and ~straight~:
 #+end_src
 
 * Usage
-Make sure that Heroku CLI is installed and you have logged in using ~heroku login~.
+Make sure that Heroku CLI is installed and you have logged in using ~heroku login~ (heroku.el will prompt you to login if you didn't, but it's better to be logged in already).
 
 Heroku.el has a single point of entry, called ~heroku-list~:
 
@@ -19,7 +19,29 @@ Heroku.el has a single point of entry, called ~heroku-list~:
   M-x heroku-list RET
 #+end_src
 
-* Screenshots
+This opens up a list with all apps that you have access to, and you can start managing them right awsy.
+
+** My favorite use cases
+I have been using this package for almost two years without releasing it, and I rarely if ever need to open heroku's web interface or run CLI commands. The most useful actions that I use all the time:
+
+*** Tail Logs
+Set the cursor on an app and press ~l~, the logs options menu will pop up:
+
+[[file:./img/logs-options.png]]
+
+Normally I just press ~ll~ to start tailing logs immediately. A new buffer will open with your logs and some basic highlighting (ERROR will be red, WARNING yellow etc.)
+
+*** Run bash/python
+Choose an app in the list and press ~r~ for ~run~:
+
+[[file:./img/run-options.png]]
+
+You can quickly run bash on the app with ~rb~ and python with ~rp~
+
+*** Restarting dynos
+Press ~yr~ to quickly restart a dyno.
+
+* More Screenshots
 ** App list
 Main interface, that allows you to choose an app and perform actions on it.
 
