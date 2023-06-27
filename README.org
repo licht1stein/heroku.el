@@ -38,7 +38,7 @@ Choose an app in the list and press ~r~ for ~run~:
 
 You can quickly run bash on the app with ~rb~ and python with ~rp~
 
-Pressing ~rr~ will prompt you for command to run in the minibuffer.
+Pressing ~rr~ will prompt you for command to run in the minibuffer, and ~rd~ will do the same, but command you give will run detached.
 
 *** Restarting dynos
 Press ~yr~ to quickly restart a dyno.
