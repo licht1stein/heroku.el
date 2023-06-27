@@ -31,17 +31,15 @@
   :group 'heroku
   :type 'list)
 
-(defvar heroku--current-pipeline nil
+(defvar-local heroku--current-pipeline nil
   "Currently selected Heroku pipeline.")
 
-(defvar heroku--pipeline-apps nil
+(defvar-local heroku--pipeline-apps nil
   "Apps in the current selected Heroku pipeline.")
 
-(defvar heroku--tabulated-list-format nil)
-(defvar heroku--tabulated-list-entries nil)
-(defvar heroku--app-name nil)
-(defvar heroku--config-original nil)
-(defvar heroku--app-name-details nil)
+(defvar-local heroku--app-name nil)
+(defvar-local heroku--config-original nil)
+(defvar-local heroku--app-name-details nil)
 
 
 ;; === TRANSIENTS ===
@@ -316,15 +314,22 @@ Similar to Clojure's get-in."
 	            (heroku-app-list-mode-refresh))
 	        (message "Wrong app name. Cancelled.")))))
 
-(defun heroku-get-app-config (app)
-  "Get config for the APP."
-  (interactive)
-  (message (format "Getting app config for %s..." app))
-  (->> (shell-command-to-string (format "heroku config -a %s" app))
+(defun heroku--format-app-config (str)
+  "Take output of heroku config-a as STR and format it for use."
+  (->> str
        (s-split "\n")
        (--filter (s-contains-p ":" it))
        (--map (s-split-up-to ":" it 1))
        (--map (list (s-trim (car it)) (s-trim-left (cadr it))))))
+
+(defun heroku-get-app-config (app)
+  "Get config for the APP."
+  (interactive)
+  (message (format "Getting app config for %s..." app))
+  (->> app
+       (format "heroku config -a %s")
+       shell-command-to-string
+       heroku--format-app-config))
 
 (defun heroku-app-config-set (app key value)
   "In APP set KEY to VALUE."
@@ -423,8 +428,8 @@ Similar to Clojure's get-in."
     (heroku-refresh-app-list))
   (let* ((columns (heroku--prepare-columns heroku-app-list))
 	       (rows (heroku--prepare-rows heroku-app-list)))
-    (setq heroku--tabulated-list-format columns)
-    (setq heroku--tabulated-list-entries rows)
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
@@ -433,8 +438,8 @@ Similar to Clojure's get-in."
   "Heroku app list mode."
   (let* ((columns (heroku--prepare-columns heroku--pipeline-apps))
 	       (rows (heroku--prepare-rows heroku--pipeline-apps)))
-    (setq heroku--tabulated-list-format columns)
-    (setq heroku--tabulated-list-entries rows)
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
@@ -444,8 +449,8 @@ Similar to Clojure's get-in."
   (let* ((data (heroku-get-pipelines-list))
 	       (columns (heroku--prepare-columns data))
 	       (rows (heroku--prepare-rows data)))
-    (setq heroku--tabulated-list-format columns)
-    (setq heroku--tabulated-list-entries rows)
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
@@ -455,8 +460,8 @@ Similar to Clojure's get-in."
   (let ((columns [("Variable" 50) ("Value" 50)])
 	      (rows (->> heroku--config-original
 		               (mapcar (lambda (x) `(nil [,@x]))))))
-    (setq heroku--tabulated-list-format columns)
-    (setq heroku--tabulated-list-entries rows)
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
@@ -466,8 +471,8 @@ Similar to Clojure's get-in."
   (let ((columns [("Description" 50) ("Value" 50)])
 	      (rows (->> (heroku-get-app-details heroku--app-name-details)
 		               (mapcar (lambda (x) `(nil [,@x]))))))
-    (setq heroku--tabulated-list-format columns)
-    (setq heroku--tabulated-list-entries rows)
+    (setq tabulated-list-format columns)
+    (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)
     (hl-line-mode)))
