@@ -53,7 +53,7 @@ Main interface, that allows you to choose an app and perform actions on it.
 [[file:./img/app-list.png]]
 
 ** App Commands
-App commands menu with available actions.
+App commands menu with available actions (you can see it by pressing ~?~)
 
 [[file:./img/app-commands.png]]
 
