@@ -20,5 +20,8 @@ Heroku.el has a single point of entry, called ~heroku-list~:
 #+end_src
 
 * Screenshots
-
+** App list
 [[file:./img/app-list.png]]
+
+** App Commands
+[[file:./img/app-commands.png]]
