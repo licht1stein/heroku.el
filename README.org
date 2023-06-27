@@ -19,6 +19,6 @@ Heroku.el has a single point of entry, called ~heroku-list~:
   M-x heroku-list RET
 #+end_src
 
-See demo here:
+* Screenshots
 
-[demo recording]
+[[file:./img/app-list.png]]
