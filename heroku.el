@@ -12,6 +12,9 @@
 ;; Heroku client for Emacs. It allows you to manage your Heroku
 ;; apps right from within Emacs: view and tail logs, edit environment variables,
 ;; restart and destroy dynos etc. Requires Heroku CLI to be installed.
+;;
+;; Main entry point is `heroku-list', once it's open press `?' to see available
+;; commands.
 
 ;;; Code:
 (require 'transient)
