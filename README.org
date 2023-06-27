@@ -22,14 +22,17 @@ Heroku.el has a single point of entry, called ~heroku-list~:
 * Screenshots
 ** App list
 Main interface, that allows you to choose an app and perform actions on it.
+
 [[file:./img/app-list.png]]
 
 ** App Commands
 App commands menu with available actions.
+
 [[file:./img/app-commands.png]]
 
 ** Environment Variables
 Editing environment variables right from within emacs. You can also easily create new ones.
+
 [[file:./img/config.png]]
 
 * Versioning
