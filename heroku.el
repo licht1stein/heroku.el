@@ -256,7 +256,7 @@ Similar to Clojure's get-in."
           (heroku--login))))
 
 (defun heroku--filter-warning-lines (output)
-  "Remove lines starting with '›' from the output string."
+  "Remove lines starting with '›' from the OUTPUT string."
   (let* ((lines (s-lines output))
          (filtered-lines (-filter (lambda (line)
                                     (not (s-starts-with? "›" (s-trim line))))
@@ -264,7 +264,7 @@ Similar to Clojure's get-in."
     (s-join "\n" filtered-lines)))
 
 (defun heroku--parse-json (output)
-  "Remove invalid characters from JSON output."
+  "Remove invalid characters from JSON OUTPUT."
   (->> output
        heroku--filter-warning-lines
        json-parse-string))
