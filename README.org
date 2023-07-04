@@ -13,7 +13,7 @@ Using ~use-package~ and ~straight~:
 * Usage
 Make sure that Heroku CLI is installed and you have logged in using ~heroku login~ (heroku.el will prompt you to login if you didn't, but it's better to be logged in already).
 
-Heroku.el has a single point of entry, called ~heroku-list~:
+Heroku.el has a main point of entry, called ~heroku-list~:
 
 #+begin_src
   M-x heroku-list RET
@@ -21,6 +21,14 @@ Heroku.el has a single point of entry, called ~heroku-list~:
 
 This opens up a list with all apps that you have access to, and you can start managing them right away (see [[#app-list][screenshot]]). Once you're in the list you can always see available commands by pressing ~?~
 
+You can also run some of the commands without starting ~heroku-list~ and get prompted for an app name to run on. Some of these commands:
+- ~heroku-run~
+- ~heroku-run-bash~
+- ~heroku-run-python~
+- ~heroku-run-detached~
+- ~heroku-sql~
+- ~heroku-dynos-restart~
+  
 ** My favorite use cases
 I have been using this package for almost two years without releasing it, and I rarely if ever need to open heroku's web interface or run CLI commands. The most useful actions that I use all the time:
 
@@ -61,6 +69,9 @@ App commands menu with available actions (you can see it by pressing ~?~)
 Editing environment variables right from within emacs. You can also easily create new ones.
 
 [[file:./img/config.png]]
+
+* Compatibility with old heroku.el
+There was previously a small [[https://github.com/emacsattic/heroku][heroku.el]] package that had two commands: ~heroku-run~ and ~heroku-sql~. Both of these commands are present in this implementation and can be used the same way.
 
 * Versioning
 The project uses [[https://github.com/ptaoussanis/encore/blob/master/BREAK-VERSIONING.md][break versioning]], meaning that upgrading from 1.0.x to 1.0.y will always be safe, upgrade to 1.y.0 might break something small, and upgrade to y.0.0. will break almost everything.

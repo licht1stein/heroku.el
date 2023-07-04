@@ -87,7 +87,7 @@
     ("-t" "process type" "--type=")]]
 
   [["Run (prompt)"
-    ("r" "run" heroku-run-command)
+    ("r" "run" heroku-run)
     ("d" "run:detached" heroku-run-detached)]
    ["Run command"
     ("b" "bash" heroku-run-bash)
@@ -563,7 +563,7 @@ Similar to Clojure's get-in."
       (heroku-logs-mode)
       (pop-to-buffer-same-window buffer))))
 
-(defun heroku-run-command (command &optional args detached)
+(defun heroku-run (command &optional args detached)
   "Run a one-off process with COMMAND with ARGS in DETACHED mode in heroku dyno."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient) nil))
   (let* ((app (heroku-get-app-name))
@@ -603,19 +603,19 @@ Similar to Clojure's get-in."
 (defun heroku-run-detached (command &optional args)
   "Run COMMAND with ARGS in detached mode."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient)))
-  (heroku-run-command command args t))
+  (heroku-run command args t))
 
 ;;;###autoload
 (defun heroku-run-python (&optional _)
   "Run python on Heroku app with ARGS."
   (interactive (list (transient-args 'heroku-run-transient)))
-  (heroku-run-command "python"))
+  (heroku-run "python"))
 
 ;;;###autoload
 (defun heroku-run-bash (&optional _)
   "Run bash on Heroku app with ARGS."
   (interactive (list (transient-args 'heroku-run-transient)))
-  (heroku-run-command "bash"))
+  (heroku-run "bash"))
 
 (defun heroku-get-config-kv ()
   "Get config key and value from list."
