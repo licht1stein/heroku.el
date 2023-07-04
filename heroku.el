@@ -1,13 +1,31 @@
 ;;; heroku.el --- Like Magit but for Heroku CLI   -*- coding: utf-8; lexical-binding: t; -*-
-
+;; 
 ;; Copyright (c) 2022 Mykhaylo Bilyanskyy <mb@m1k.pw>
-
+;; 
 ;; Author: Mykhaylo Bilyanskyy
 ;; URL: https://github.com./licht1stein/heroku.el
 ;; Keywords: heroku, devops, convenience
 ;; Version: 1.0.0
 ;; Package-Requires: ((emacs "27.2") (transient "0.3.7") (dash "2.19.1") (s "1.13.0") (ts "0.2.2"))
-
+;;
+;; License: GPLv3
+;;
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation, either version 3 of the
+;; License, or (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful, but
+;; WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+;; General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;
+;; This file is not part of GNU Emacs.
+;; 
 ;;; Commentary:
 ;; Heroku client for Emacs, quick and efficient like Magit (thanks for the transient)!
 ;; It allows you to manage your Heroku apps right from within Emacs: view and tail
@@ -50,7 +68,7 @@
 (transient-define-prefix heroku-run-transient ()
   "Heroku run transient."
   [[:description (lambda () (s-concat "Run a one-off process inside " (heroku-get-app-name-propertized)))
-		""]]
+		             ""]]
 
   [["Arguments"
     ("-e" "environment variables to set (use ';' to split multiple vars)" "env=")
@@ -73,19 +91,19 @@
   :value (list "--tail")
   [[:description (lambda () (s-concat "Get logs for " (heroku-get-app-name-propertized)))
 
-		"\nArguments"
-		("-d" "only show output from this dyno type (web, worker)" "--dyno=")
-		("-n" "number of lines to display" "--num=")
-		("-r" "git remote of app to use" "--remote=")
-		("-s" "only show output from this source (app, heroku)" "--source=")
-		("-t" "continually stream logs" "--tail")]]
+		             "\nArguments"
+		             ("-d" "only show output from this dyno type (web, worker)" "--dyno=")
+		             ("-n" "number of lines to display" "--num=")
+		             ("-r" "git remote of app to use" "--remote=")
+		             ("-s" "only show output from this source (app, heroku)" "--source=")
+		             ("-t" "continually stream logs" "--tail")]]
   [["Execute"
     ("l" "display log output" heroku-get-logs)]])
 
 (transient-define-prefix heroku-pipelines-transient ()
   "Heroku help transient."
   [[:description "Heroku.el Pipelines"
-		""]]
+		             ""]]
   [["Commands"
     ("g" "Refresh" heroku-pipelines-mode)
     ("a" "Apps" heroku-pipelines-apps)]]
@@ -96,7 +114,7 @@
 (transient-define-prefix heroku-config-transient ()
   "Heroku config transient."
   [[:description (lambda () (s-concat "Config for " heroku--app-name))
-		""]]
+		             ""]]
   [["Commands"
     ("g" "Refresh" heroku-app-config-refresh)
     ("c" "Create" heroku-app-config-create)
@@ -106,7 +124,7 @@
 (transient-define-prefix heroku-help-transient ()
   "Heroku help transient."
   [[:description "Heroku.el commands"
-		""]]
+		             ""]]
   [["Commands"
     ("g" "Refresh" heroku-app-list-mode-refresh)
     ("c" "Config" heroku-app-config)
@@ -125,7 +143,7 @@
 (transient-define-prefix heroku-promote-transient ()
   "Heroku promote transient."
   [[:description "promote the lateste releaste of app to its downstream app(s)"
-		""]]
+		             ""]]
   [["Arguments"
     ("-r" "git remote of app to use" "--remote=")
     ("-t" "comma separated list of apps to promote to" "--to=")]]
@@ -135,7 +153,7 @@
 (transient-define-prefix heroku-dynos-transient ()
   "Heroku dynos transient."
   [[:description "manage dynos"
-		""]]
+		             ""]]
   [["Options"
     ("-r" "git remote of app to use" "--reomote=")]]
   [["Commands"
