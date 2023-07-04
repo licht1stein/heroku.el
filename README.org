@@ -2,7 +2,17 @@
 
 This package does to Heroku CLI what Magit did to git. It transforms the ~heroku~ commands into useful, quick and intuitive interface using [[https://github.com/magit/transient][transient]].
 
-:toc:
+* Table of Contents :toc:
+- [[#install][Install]]
+- [[#usage][Usage]]
+  - [[#my-favorite-use-cases][My favorite use cases]]
+- [[#more-screenshots][More Screenshots]]
+  - [[#app-list][App list]]
+  - [[#app-commands][App Commands]]
+  - [[#environment-variables][Environment Variables]]
+  - [[#heroku-postgres][Heroku Postgres]]
+- [[#compatibility-with-old-herokuel][Compatibility with old heroku.el]]
+- [[#versioning][Versioning]]
 
 * Install
 Using ~use-package~ and ~straight~:
