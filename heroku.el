@@ -544,7 +544,9 @@ Similar to Clojure's get-in."
 
 (defun heroku-get-app-name ()
   "Read app name from app list."
-  (aref (tabulated-list-get-entry) 0))
+  (if (derived-mode-p 'tabulated-list-mode)
+      (aref (tabulated-list-get-entry) 0)
+    (read-string "Enter Heroku app name: ")))
 
 (defun heroku-get-app-name-propertized ()
   "Get app name and propertize it."
@@ -723,7 +725,7 @@ Similar to Clojure's get-in."
         (heroku--parse-pgsql-credentials-string s)
       nil)))
 
-(defun heroku-sql-connect (app)
+(defun heroku-sql (app)
   "Use `sql-connect' to connect to Heroku Posgres for APP."
   (interactive (list (heroku-get-app-name)))
   (let* ((conn (heroku--get-pgsql-credentials app))
