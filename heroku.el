@@ -546,7 +546,7 @@ Similar to Clojure's get-in."
   "Read app name from app list."
   (if (derived-mode-p 'tabulated-list-mode)
       (aref (tabulated-list-get-entry) 0)
-    (read-string "Enter Heroku app name: ")))
+    (read-string "Not in heroku-list, so please enter Heroku app name manually: ")))
 
 (defun heroku-get-app-name-propertized ()
   "Get app name and propertize it."
@@ -587,26 +587,31 @@ Similar to Clojure's get-in."
     (-> (s-join " " `("heroku" ,command "-a" ,app ,@args))
 	      shell-command-to-string)))
 
+;;;###autoload
 (defun heroku-dynos-restart (app &optional args)
   "Restart APP dynos with ARGS."
   (interactive (list (heroku-get-app-name) (transient-args 'heroku-dynos-transient)))
   (heroku-app-command "dyno:restart" app args))
 
+;;;###autoload
 (defun heroku-dynos-kill (app &optional args)
   "Kill APP dynos with ARGS."
   (interactive (list (heroku-get-app-name) (transient-args 'heroku-dynos-transient)))
   (heroku-app-command "dyno:kill" app args))
 
+;;;###autoload
 (defun heroku-run-detached (command &optional args)
   "Run COMMAND with ARGS in detached mode."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient)))
   (heroku-run-command command args t))
 
+;;;###autoload
 (defun heroku-run-python (&optional _)
   "Run python on Heroku app with ARGS."
   (interactive (list (transient-args 'heroku-run-transient)))
   (heroku-run-command "python"))
 
+;;;###autoload
 (defun heroku-run-bash (&optional _)
   "Run bash on Heroku app with ARGS."
   (interactive (list (transient-args 'heroku-run-transient)))
@@ -725,6 +730,7 @@ Similar to Clojure's get-in."
         (heroku--parse-pgsql-credentials-string s)
       nil)))
 
+;;;###autoload
 (defun heroku-sql (app)
   "Use `sql-connect' to connect to Heroku Posgres for APP."
   (interactive (list (heroku-get-app-name)))
