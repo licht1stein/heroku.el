@@ -167,7 +167,7 @@
   [["Commands"
     ;; ("k" "Kill" heroku-dynos-kill)
     ;; ("s" "Resize" heroku-dynos-resize)
-    ("r" "Restart" heroku-dynos-restart)
+    ("r" "Restart" heroku-restart)
     ;; ("c" "Scale" heroku-dynos-scale)
     ;; ("s" "Stop" heroku-dynos-stop)
     ]])
@@ -588,7 +588,7 @@ Similar to Clojure's get-in."
 	      shell-command-to-string)))
 
 ;;;###autoload
-(defun heroku-dynos-restart (app &optional args)
+(defun heroku-restart (app &optional args)
   "Restart APP dynos with ARGS."
   (interactive (list (heroku-get-app-name) (transient-args 'heroku-dynos-transient)))
   (heroku-app-command "dyno:restart" app args))

@@ -27,7 +27,7 @@ You can also run some of the commands without starting ~heroku-list~ and get pro
 - ~heroku-run-python~
 - ~heroku-run-detached~
 - ~heroku-sql~
-- ~heroku-dynos-restart~
+- ~heroku-restart~
   
 ** My favorite use cases
 I have been using this package for almost two years without releasing it, and I rarely if ever need to open heroku's web interface or run CLI commands. The most useful actions that I use all the time:
