@@ -43,6 +43,12 @@
 (require 'ts)
 (require 'subr-x)
 (require 'comint)
+(require 'sql)
+(require 'shell)
+
+(defmacro heroku--comment (&rest _)
+  "Ignore body yield nil."
+  nil)
 
 (defvar-local heroku-timestamp-regex "^[[:digit:]]\\{4\\}-[[:digit:]]\\{2\\}-[[:digit:]]\\{2\\}T[[:digit:]:\+\.]*" "Regex pattern of heroku logs standard timestamp.")
 (defvar-local heroku-app-name-re "^[[:alnum:]-]*" "Heroku app name regex.")
@@ -133,6 +139,7 @@
     ("i" "Info" heroku-app-details)
     ("l" "Logs" heroku-logs-transient)
     ("r" "Run" heroku-run-transient)
+    ("s" "Postgres" heroku-sql-connect)
     ("d" "Destroy" heroku-app-destroy)
     ("R" "Promote" heroku-promote-transient)]
    ["Other modes"
@@ -184,6 +191,7 @@
     (define-key map_ (kbd "y") 'heroku-dynos-transient)
     (define-key map_ (kbd "l") 'heroku-logs-transient)
     (define-key map_ (kbd "r") 'heroku-run-transient)
+    (define-key map_ (kbd "s") 'heroku-sql-connect)
     (define-key map_ (kbd "?") 'heroku-help-transient)
     (define-key map_ (kbd "c") 'heroku-app-config)
     (define-key map_ (kbd "i") 'heroku-app-details)
@@ -688,6 +696,49 @@ Similar to Clojure's get-in."
     (switch-to-buffer buff)
     (heroku-pipelines-mode)))
 
+(defun heroku--parse-pgsql-credentials-string (str)
+  "Parse STR output of pg:credentials:url for sql."
+  (let* ((dbname (when (string-match "dbname=\\([^ ]+\\)" str)
+                   (match-string 1 str)))
+         (host (when (string-match "host=\\([^ ]+\\)" str)
+                 (match-string 1 str)))
+         (port (when (string-match "port=\\([^ ]+\\)" str)
+                 (string-to-number (match-string 1 str))))
+         (user (when (string-match "user=\\([^ ]+\\)" str)
+                 (match-string 1 str)))
+         (password (when (string-match "password=\\([^ ]+\\)" str)
+                     (match-string 1 str))))
+    `((sql-product 'postgres)
+      (sql-server ,host)
+      (sql-user ,user)
+      (sql-password ,password)
+      (sql-database ,dbname)
+      (sql-port ,port))))
+
+(defun heroku--get-pgsql-credentials (app)
+  "Use CLI to get pgsql connection options for APP."
+  (let* ((s (shell-command-to-string (format "heroku pg:credentials:url -a %s" app)))
+         (has-db (s-contains-p "dbname=" s)))
+    (if has-db
+        (heroku--parse-pgsql-credentials-string s)
+      nil)))
+
+(defun heroku-sql-connect (app)
+  "Use `sql-connect' to connect to Heroku Posgres for APP."
+  (interactive (list (heroku-get-app-name)))
+  (let* ((conn (heroku--get-pgsql-credentials app))
+         (password (cadr (assoc 'sql-password conn)))
+         (safe-conn (assoc-delete-all 'sql-password conn))
+         (conn-name (s-concat "heroku-" app)))
+    (if conn
+        (progn
+          (setenv "PGPASSWORD" password)
+          (add-to-list 'sql-connection-alist
+                       (cons conn-name safe-conn))
+          (sql-connect conn-name)
+          (setenv "PGPASSWORD" nil))
+      (error "No Heroku Postgres set up for %s" app))))
+
 ;;;###autoload
 (defun heroku-list ()
   "Start heroku.el and choose app to operate on."
@@ -695,6 +746,10 @@ Similar to Clojure's get-in."
   (let ((buff "*Heroku Apps*"))
     (switch-to-buffer buff)
     (heroku-app-list-mode)))
+
+(heroku--comment
+ (heroku--sql-connect "tarka")
+ )
 
 (provide 'heroku)
 ;;; heroku.el ends here
