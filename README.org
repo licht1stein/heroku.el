@@ -1,4 +1,5 @@
 #+title: Emacs interface for Heroku CLI
+[[https://melpa.org/#/heroku][file:https://melpa.org/packages/heroku-badge.svg]] [[https://stable.melpa.org/#/heroku][file:https://stable.melpa.org/packages/heroku-badge.svg]]
 
 This package does to Heroku CLI what Magit did to git. It transforms the ~heroku~ commands into useful, quick and intuitive interface using [[https://github.com/magit/transient][transient]].
 
@@ -15,11 +16,10 @@ This package does to Heroku CLI what Magit did to git. It transforms the ~heroku
 - [[#versioning][Versioning]]
 
 * Install
-Using ~use-package~ and ~straight~:
+You can install ~heroku.el~ from [[https://melpa.org/#/heroku][MELPA]] or [[https://stable.melpa.org/#/heroku][MELPA Stable]]:
 
-#+begin_src elisp
-  (use-package heroku
-    :straight (:type git :host github :repo "licht1stein/heroku.el"))
+#+begin_src
+  M-x package-install RET heroku RET
 #+end_src
 
 * Usage
