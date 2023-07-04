@@ -230,7 +230,7 @@
 (defun heroku-some-string-p (s)
   "Return S if it's some not empty string, else nil."
   (cond
-   ((eq s nil) nil)
+   ((null s) nil)
    ((not (eq 'string (type-of s))) nil)
    ((string= s "") nil)
    (t s)))
@@ -348,7 +348,7 @@ Similar to Clojure's get-in."
 (defun heroku-get-app-config (app)
   "Get config for the APP."
   (interactive)
-  (message (format "Getting app config for %s..." app))
+  (message "Getting app config for %s..." app)
   (->> app
        (format "heroku config -a %s")
        shell-command-to-string
@@ -547,7 +547,7 @@ Similar to Clojure's get-in."
   (interactive (list (transient-args 'heroku-logs-transient)))
   (let* ((app (heroku-get-app-name))
 	       (buffer (format "*Heroku Logs: %s*" app)))
-    (message (format "Gettings Heroku logs for %s..." app))
+    (message "Gettings Heroku logs for %s..." app)
     (apply #'make-comint-in-buffer "heroku-logs" buffer "heroku" nil "logs" "-a" app args)
     (with-current-buffer buffer
       (heroku-logs-mode)
@@ -558,7 +558,7 @@ Similar to Clojure's get-in."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient) nil))
   (let* ((app (heroku-get-app-name))
 	       (buffer-name (format "*Heroku Run: %s" app)))
-    (message (format "Running %s on %s..." command app))
+    (message "Running %s on %s..." command app)
     (if detached
 	      (async-shell-command (s-join " " `("heroku run:detached -a" ,app ,command ,@args)))
       (progn
@@ -641,7 +641,7 @@ Similar to Clojure's get-in."
 	       (value (cadr kv))
 	       (win (split-window-below))
 	       (buff (format "*heroku-edit")))
-    (message (format "Editing environment variable %s..." key))
+    (message "Editing environment variable %s..." key)
     (select-window win)
     (switch-to-buffer (get-buffer-create buff))
     (heroku-env-edit-mode)
