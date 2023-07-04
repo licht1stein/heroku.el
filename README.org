@@ -1,4 +1,4 @@
-* Emacs interface for Heroku CLI
+#+title: Emacs interface for Heroku CLI
 
 This package does to Heroku CLI what Magit did to git. It transforms the ~heroku~ commands into useful, quick and intuitive interface using [[https://github.com/magit/transient][transient]].
 
