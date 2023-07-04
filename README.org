@@ -92,7 +92,7 @@ Running ~heroku-sql~ opens Emacs's sql buffer for ~psql~ and you can start worki
 [[file:./img/heroku-sql.png]]
 
 * Compatibility with old heroku.el
-There was previously a small [[https://github.com/emacsattic/heroku][heroku.el]] package that had two commands: ~heroku-run~ and ~heroku-sql~. Both of these commands are present in this implementation and can be used the same way.
+There was previously a small [[https://github.com/emacsattic/heroku][heroku.el]] package that had two commands: ~heroku-run~ and ~heroku-sql~. Both of these commands are present in this implementation and can be used the same way, to preserve backward compatibility.
 
 * Versioning
 The project uses [[https://github.com/ptaoussanis/encore/blob/master/BREAK-VERSIONING.md][break versioning]], meaning that upgrading from 1.0.x to 1.0.y will always be safe, upgrade to 1.y.0 might break something small, and upgrade to y.0.0. will break almost everything.
