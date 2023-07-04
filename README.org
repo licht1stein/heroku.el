@@ -70,6 +70,11 @@ Editing environment variables right from within emacs. You can also easily creat
 
 [[file:./img/config.png]]
 
+** Heroku Postgres
+Running ~heroku-sql~ opens Emacs's sql buffer for ~psql~ and you can start working with the db:
+
+[[file:./img/heroku-sql.png]]
+
 * Compatibility with old heroku.el
 There was previously a small [[https://github.com/emacsattic/heroku][heroku.el]] package that had two commands: ~heroku-run~ and ~heroku-sql~. Both of these commands are present in this implementation and can be used the same way.
 
