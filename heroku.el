@@ -42,6 +42,7 @@
 (require 'json)
 (require 'ts)
 (require 'subr-x)
+(require 'comint)
 
 (defvar-local heroku-timestamp-regex "^[[:digit:]]\\{4\\}-[[:digit:]]\\{2\\}-[[:digit:]]\\{2\\}T[[:digit:]:\+\.]*" "Regex pattern of heroku logs standard timestamp.")
 (defvar-local heroku-app-name-re "^[[:alnum:]-]*" "Heroku app name regex.")
@@ -287,7 +288,7 @@ Similar to Clojure's get-in."
 (defun heroku-assert-login (s)
   "Check S output of heroku command for logged out state and offer to login."
   (if (s-contains-p "Press any key to open up the browser to login or q to exit" s)
-      (if (y-or-n-p "You are logged out of Heroku. Open browser to login?")
+      (if (y-or-n-p q"You are logged out of Heroku. Open browser to login?")
           (heroku--login))))
 
 (defun heroku--filter-warning-lines (output)
@@ -591,12 +592,12 @@ Similar to Clojure's get-in."
   (interactive (list (read-from-minibuffer "Command to run: ") (transient-args 'heroku-run-transient)))
   (heroku-run-command command args t))
 
-(defun heroku-run-python (&optional args)
+(defun heroku-run-python (&optional _)
   "Run python on Heroku app with ARGS."
   (interactive (list (transient-args 'heroku-run-transient)))
   (heroku-run-command "python"))
 
-(defun heroku-run-bash (&optional args)
+(defun heroku-run-bash (&optional _)
   "Run bash on Heroku app with ARGS."
   (interactive (list (transient-args 'heroku-run-transient)))
   (heroku-run-command "bash"))
@@ -612,6 +613,12 @@ Similar to Clojure's get-in."
   (kill-buffer (current-buffer))
   (delete-window))
 
+(defvar-local heroku--env-key nil)
+(defvar-local heroku--env-old-value nil)
+
+(define-derived-mode heroku-env-edit-mode fundamental-mode "Heroku Edit Env"
+  (message "Press `C-c '` to save or `C-c C-k` to cancel"))
+
 (defun heroku-config-edit-save ()
   "Save config to Heroku."
   (interactive)
@@ -625,11 +632,6 @@ Similar to Clojure's get-in."
 		             (message (s-concat heroku--env-key " " new-value))
 		             (heroku-config-edit-cancel)
 		             (heroku-app-config-refresh))))))
-
-(define-derived-mode heroku-env-edit-mode fundamental-mode "Heroku Edit Env"
-  (defvar-local heroku--env-key nil)
-  (defvar-local heroku--env-old-value nil)
-  (message "Press `C-c '` to save or `C-c C-k` to cancel"))
 
 (defun heroku-config-edit ()
   "Edit Heroku config."
