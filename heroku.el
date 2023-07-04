@@ -105,7 +105,7 @@
 		             ("-s" "only show output from this source (app, heroku)" "--source=")
 		             ("-t" "continually stream logs" "--tail")]]
   [["Execute"
-    ("l" "display log output" heroku-get-logs)]])
+    ("l" "display log output" heroku-logs)]])
 
 (transient-define-prefix heroku-pipelines-transient ()
   "Heroku help transient."
@@ -552,7 +552,8 @@ Similar to Clojure's get-in."
   "Get app name and propertize it."
   (propertize (heroku-get-app-name) 'face 'transient-argument))
 
-(defun heroku-get-logs (&optional args)
+;;;###autoload
+(defun heroku-logs (&optional args)
   "Get Heroku logs for app using ARGS."
   (interactive (list (transient-args 'heroku-logs-transient)))
   (let* ((app (heroku-get-app-name))

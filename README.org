@@ -22,12 +22,16 @@ Heroku.el has a main point of entry, called ~heroku-list~:
 This opens up a list with all apps that you have access to, and you can start managing them right away (see [[#app-list][screenshot]]). Once you're in the list you can always see available commands by pressing ~?~
 
 You can also run some of the commands without starting ~heroku-list~ and get prompted for an app name to run on. Some of these commands:
+
+- ~heroku-logs~
 - ~heroku-run~
 - ~heroku-run-bash~
 - ~heroku-run-python~
 - ~heroku-run-detached~
 - ~heroku-sql~
 - ~heroku-restart~
+
+They will not let you set command line arguments and options, but will allow for quick actions when you know exactly what you want to do.
   
 ** My favorite use cases
 I have been using this package for almost two years without releasing it, and I rarely if ever need to open heroku's web interface or run CLI commands. The most useful actions that I use all the time:
