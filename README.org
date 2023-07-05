@@ -1,7 +1,7 @@
 #+title: Emacs interface for Heroku CLI
 [[https://melpa.org/#/heroku][file:https://melpa.org/packages/heroku-badge.svg]] [[https://stable.melpa.org/#/heroku][file:https://stable.melpa.org/packages/heroku-badge.svg]]
 
-This package does to Heroku CLI what Magit did to git. It transforms the ~heroku~ commands into useful, quick and intuitive interface using [[https://github.com/magit/transient][transient]].
+This package does to [[https://devcenter.heroku.com/articles/heroku-cli][Heroku CLI]] what Magit did to git. It transforms the ~heroku~ commands into useful, quick and intuitive interface using [[https://github.com/magit/transient][transient]].
 
 * Table of Contents :toc:
 - [[#install][Install]]
