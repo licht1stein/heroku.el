@@ -5,7 +5,7 @@
 ;; Author: Mykhaylo Bilyanskyy
 ;; URL: https://github.com./licht1stein/heroku.el
 ;; Keywords: heroku, devops, convenience
-;; Version: 1.0.0
+;; Version: 1.0.1
 ;; Package-Requires: ((emacs "27.2") (transient "0.3.7") (dash "2.19.1") (s "1.13.0") (ts "0.2.2"))
 ;;
 ;; License: GPLv3
@@ -139,7 +139,7 @@
     ("i" "Info" heroku-app-details)
     ("l" "Logs" heroku-logs-transient)
     ("r" "Run" heroku-run-transient)
-    ("s" "Postgres" heroku-sql-connect)
+    ("s" "Postgres" heroku-sql)
     ("d" "Destroy" heroku-app-destroy)
     ("R" "Promote" heroku-promote-transient)]
    ["Other modes"
@@ -191,7 +191,7 @@
     (define-key map_ (kbd "y") 'heroku-dynos-transient)
     (define-key map_ (kbd "l") 'heroku-logs-transient)
     (define-key map_ (kbd "r") 'heroku-run-transient)
-    (define-key map_ (kbd "s") 'heroku-sql-connect)
+    (define-key map_ (kbd "s") 'heroku-sql)
     (define-key map_ (kbd "?") 'heroku-help-transient)
     (define-key map_ (kbd "c") 'heroku-app-config)
     (define-key map_ (kbd "i") 'heroku-app-details)
@@ -328,7 +328,7 @@ Similar to Clojure's get-in."
 (defun heroku-get-app-list ()
   "Get full app list data."
   (->> (heroku--command-json "heroku apps -A --json")
-       (-map #'heroku--app-list-data) ))
+       (-map #'heroku--app-list-data)))
 
 
 (defun heroku-app-destroy (app)
